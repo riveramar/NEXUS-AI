@@ -580,15 +580,15 @@ const footerEl = document.querySelector('footer');
 tabChatBtn.addEventListener('click', () => {
   tabChatBtn.classList.add('active');
   tabProjectsBtn.classList.remove('active');
-  chatView.style.display = '';
+  chatView.style.display = 'block';
   projectsView.style.display = 'none';
-  footerEl.style.display = '';
+  footerEl.style.display = 'block';
 });
 tabProjectsBtn.addEventListener('click', () => {
   tabProjectsBtn.classList.add('active');
   tabChatBtn.classList.remove('active');
   chatView.style.display = 'none';
-  projectsView.style.display = '';
+  projectsView.style.display = 'block';
   footerEl.style.display = 'none';
 });
 
