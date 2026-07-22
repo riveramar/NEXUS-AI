@@ -332,6 +332,12 @@
     margin-right:6px;
   }
   .edit-project:hover{border-color:var(--violet);color:var(--violet);}
+  .continue-project{
+    background:none;border:1px solid var(--violet);color:var(--violet);
+    border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;flex-shrink:0;
+    margin-right:6px;
+  }
+  .continue-project:hover{background:var(--violet-dim);}
   .add-project-btn{
     justify-self:start;
     background:var(--violet);
@@ -840,6 +846,7 @@
 const messagesEl = document.getElementById('messages');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
+let pendingContinueId = new URLSearchParams(location.search).get('continue');
 const chatAttachBtn = document.getElementById('chatAttachBtn');
 const chatFileInput = document.getElementById('chatFileInput');
 const chatAttachmentPreview = document.getElementById('chatAttachmentPreview');
@@ -1179,20 +1186,22 @@ const chatView = document.getElementById('chatView');
 const projectsView = document.getElementById('projectsView');
 const footerEl = document.querySelector('footer');
 
-tabChatBtn.addEventListener('click', () => {
+function switchToChat(){
   tabChatBtn.classList.add('active');
   tabProjectsBtn.classList.remove('active');
   chatView.style.display = 'block';
   projectsView.style.display = 'none';
   footerEl.style.display = 'block';
-});
-tabProjectsBtn.addEventListener('click', () => {
+}
+function switchToProjects(){
   tabProjectsBtn.classList.add('active');
   tabChatBtn.classList.remove('active');
   chatView.style.display = 'none';
   projectsView.style.display = 'block';
   footerEl.style.display = 'none';
-});
+}
+tabChatBtn.addEventListener('click', switchToChat);
+tabProjectsBtn.addEventListener('click', switchToProjects);
 
 // ---- Google Drive sync ----
 const driveSetup = document.getElementById('driveSetup');
@@ -1250,6 +1259,7 @@ driveSignInBtn.addEventListener('click', () => {
       refreshDriveUI();
       await syncFromDrive();
       await syncSettingsFromDrive();
+      tryCompleteContinue();
     }
   });
   tokenClient.requestAccessToken();
@@ -1515,6 +1525,7 @@ function renderProjects(){
           <div class="meta">${statusHtml} &middot; ${dateStr}${tagsHtml ? ' &middot; ' + tagsHtml : ''}</div>
         </div>
         <div style="display:flex;flex-shrink:0;">
+          <button class="continue-project" data-id="${p.id}">&#8599; Ituloy sa Chat</button>
           <button class="edit-project" data-id="${p.id}">I-edit</button>
           <button class="delete-project" data-id="${p.id}">Tanggalin</button>
         </div>
@@ -1549,6 +1560,15 @@ function renderProjects(){
       proj.attachments = (proj.attachments || []).filter(a => a.id !== attId);
       saveProjects(list);
       renderProjects();
+    });
+  });
+
+  projectList.querySelectorAll('.continue-project').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-id');
+      const url = new URL(location.href);
+      url.searchParams.set('continue', id);
+      window.open(url.toString(), '_blank');
     });
   });
 
@@ -1642,9 +1662,11 @@ function attemptSilentSignIn(triesLeft = 20){
         refreshDriveUI();
         await syncFromDrive();
         await syncSettingsFromDrive();
+        tryCompleteContinue();
+      } else {
+        // Walang session/consent pa sa device/browser na ito.
+        showContinueSignInPrompt();
       }
-      // Kung nabigo (walang session/consent pa), mananatiling nakalabas
-      // ang "Mag-sign in" button para pindutin nang minsan.
     }
   });
   silentClient.requestAccessToken();
@@ -1816,6 +1838,54 @@ async function send(){
     input.focus();
   }
 }
+
+// ---- "Ituloy sa Chat" mula sa isang proyekto (gumagana kahit ibang device,
+// basta naka-sign in sa parehong Google account) ----
+function cleanContinueUrlParam(){
+  const cleanUrl = new URL(location.href);
+  cleanUrl.searchParams.delete('continue');
+  history.replaceState({}, '', cleanUrl.toString());
+}
+
+function showContinueSignInPrompt(){
+  if (!pendingContinueId) return;
+  switchToProjects();
+  let banner = document.getElementById('continueSignInBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'continueSignInBanner';
+    banner.style.cssText = 'background:var(--violet-dim);border:1px solid var(--violet);color:var(--text-hi);border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:13.5px;';
+    banner.textContent = 'May proyekto kang gustong ituloy dito. Mag-sign in muna gamit Google sa ibaba para makuha ito.';
+    projectDashboard.parentNode.insertBefore(banner, projectDashboard);
+  }
+}
+
+function tryCompleteContinue(){
+  if (!pendingContinueId) return;
+  const proj = loadProjects().find(p => String(p.id) === String(pendingContinueId));
+  if (!proj) return;
+
+  const banner = document.getElementById('continueSignInBanner');
+  if (banner) banner.remove();
+
+  let msg = 'Ituloy natin ang proyektong "' + proj.title + '".\n\n';
+  if (proj.lastStop) msg += 'Saan ako huminto: ' + proj.lastStop + '\n\n';
+  if (proj.nextSteps) msg += 'Susunod na gagawin / kulang pa: ' + proj.nextSteps + '\n\n';
+  if (proj.code) msg += 'Narito ang naka-save kong code:\n```\n' + proj.code + '\n```\n\n';
+  msg += 'Tulungan mo akong ipagpatuloy ito.';
+
+  switchToChat();
+  input.value = msg;
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 200) + 'px';
+  input.focus();
+
+  pendingContinueId = null;
+  cleanContinueUrlParam();
+}
+
+// Subukan agad (gagana kaagad kung parehong browser/device dati).
+tryCompleteContinue();
 </script>
 
 </body>
