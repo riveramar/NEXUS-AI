@@ -614,6 +614,50 @@
     transition:border-color 0.15s;
   }
   .input-shell:focus-within{border-color:var(--violet);}
+  .attach-btn{
+    width:36px;height:36px;flex-shrink:0;
+    border-radius:9px;
+    border:1px solid var(--line);
+    background:var(--bg-2);
+    color:var(--text-mid);
+    font-size:15px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    margin-bottom:0;
+  }
+  .attach-btn:hover{color:var(--text-hi);border-color:var(--violet);}
+  .chat-attachment-preview:empty{display:none;}
+  .chat-attachment-preview{margin-bottom:8px;}
+  .chat-attach-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:var(--bg-1);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:6px 10px;
+    font-size:12.5px;
+    color:var(--text-mid);
+  }
+  .chat-attach-chip img{
+    width:28px;height:28px;border-radius:5px;object-fit:cover;
+  }
+  .chat-attach-chip button{
+    background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;
+  }
+  .chat-attach-chip button:hover{color:#E05C5C;}
+  .user-attachment{margin-bottom:8px;}
+  .user-attachment img{
+    max-width:220px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    display:block;
+  }
+  .user-attachment .file-chip-static{
+    display:inline-flex;align-items:center;gap:6px;
+    background:var(--bg-2);border:1px solid var(--line);border-radius:8px;
+    padding:6px 10px;font-size:12.5px;color:var(--text-mid);
+  }
   textarea{
     flex:1;
     background:none;
@@ -779,13 +823,16 @@
 
 <footer>
   <div class="composer">
+    <div class="chat-attachment-preview" id="chatAttachmentPreview"></div>
     <div class="input-shell">
+      <button class="attach-btn" id="chatAttachBtn" type="button" aria-label="Mag-attach ng file" title="Mag-attach ng file o larawan">&#128206;</button>
+      <input type="file" id="chatFileInput" accept="image/*,.txt,.md,.js,.jsx,.ts,.tsx,.py,.java,.c,.cpp,.cs,.php,.json,.csv,.html,.css,.sql,.sh,.yml,.yaml" style="display:none;">
       <textarea id="input" rows="1" placeholder="I-type ang code, error, o tanong mo..."></textarea>
       <button class="send" id="sendBtn" aria-label="Send">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
       </button>
     </div>
-    <div class="hint">Enter para magpadala &middot; Shift+Enter para bagong linya</div>
+    <div class="hint">Enter para magpadala &middot; Shift+Enter para bagong linya &middot; &#128206; para mag-attach ng file/larawan</div>
   </div>
 </footer>
 
@@ -793,6 +840,86 @@
 const messagesEl = document.getElementById('messages');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
+const chatAttachBtn = document.getElementById('chatAttachBtn');
+const chatFileInput = document.getElementById('chatFileInput');
+const chatAttachmentPreview = document.getElementById('chatAttachmentPreview');
+let pendingAttachment = null;
+
+const TEXT_FILE_EXT = ['txt','md','js','jsx','ts','tsx','py','java','c','cpp','cs','php','json','csv','html','css','sql','sh','yml','yaml'];
+
+function fileExt(name){
+  const parts = name.split('.');
+  return parts.length > 1 ? parts.pop().toLowerCase() : '';
+}
+
+function renderChatAttachmentPreview(){
+  chatAttachmentPreview.innerHTML = '';
+  if (!pendingAttachment) return;
+  const chip = document.createElement('div');
+  chip.className = 'chat-attach-chip';
+  if (pendingAttachment.kind === 'image') {
+    const img = document.createElement('img');
+    img.src = pendingAttachment.dataUrl;
+    chip.appendChild(img);
+  }
+  const label = document.createElement('span');
+  label.textContent = (pendingAttachment.kind === 'image' ? '\u{1F5BC} ' : '\u{1F4C4} ') + pendingAttachment.name;
+  chip.appendChild(label);
+  const removeBtn = document.createElement('button');
+  removeBtn.textContent = '\u2715';
+  removeBtn.addEventListener('click', () => {
+    pendingAttachment = null;
+    renderChatAttachmentPreview();
+  });
+  chip.appendChild(removeBtn);
+  chatAttachmentPreview.appendChild(chip);
+}
+
+chatAttachBtn.addEventListener('click', () => chatFileInput.click());
+
+chatFileInput.addEventListener('change', () => {
+  const file = chatFileInput.files && chatFileInput.files[0];
+  chatFileInput.value = '';
+  if (!file) return;
+
+  const MAX_SIZE = 4 * 1024 * 1024;
+  if (file.size > MAX_SIZE) {
+    alert('Masyadong malaki ang file na ito (limitasyon: 4MB).');
+    return;
+  }
+
+  if (file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      pendingAttachment = {
+        kind: 'image',
+        name: file.name,
+        mimeType: file.type,
+        dataUrl,
+        base64: dataUrl.split(',')[1]
+      };
+      renderChatAttachmentPreview();
+    };
+    reader.readAsDataURL(file);
+    return;
+  }
+
+  const ext = fileExt(file.name);
+  if (TEXT_FILE_EXT.includes(ext) || file.type.startsWith('text/')) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      let content = reader.result;
+      if (content.length > 20000) content = content.slice(0, 20000) + '\n... (na-truncate, masyadong mahaba)';
+      pendingAttachment = { kind: 'text', name: file.name, content };
+      renderChatAttachmentPreview();
+    };
+    reader.readAsText(file);
+    return;
+  }
+
+  alert('Ang uri ng file na ito ay hindi pa suportado sa chat (larawan o text/code files lang). Puwede mo itong i-attach sa halip sa "Mga Proyekto" tab.');
+});
 const apikeyBox = document.getElementById('apikeyBox');
 const apikeyInput = document.getElementById('apikeyInput');
 const saveKeyBtn = document.getElementById('saveKeyBtn');
@@ -991,7 +1118,7 @@ function renderMessageInto(container, text){
   }
 }
 
-function addMessage(role, text, label){
+function addMessage(role, text, label, attachment){
   const row = document.createElement('div');
   row.className = 'msg ' + (role === 'user' ? 'user' : 'ai');
   const avatar = document.createElement('div');
@@ -1004,6 +1131,21 @@ function addMessage(role, text, label){
     tag.className = 'source-tag';
     tag.textContent = label === 'GM' ? 'Gemini (Google)' : label === 'GR' ? 'Llama (Groq)' : 'Claude (Anthropic)';
     bubble.appendChild(tag);
+  }
+  if (attachment) {
+    const attWrap = document.createElement('div');
+    attWrap.className = 'user-attachment';
+    if (attachment.kind === 'image') {
+      const img = document.createElement('img');
+      img.src = attachment.dataUrl;
+      attWrap.appendChild(img);
+    } else {
+      const chip = document.createElement('span');
+      chip.className = 'file-chip-static';
+      chip.textContent = '\u{1F4C4} ' + attachment.name;
+      attWrap.appendChild(chip);
+    }
+    bubble.appendChild(attWrap);
   }
   const inner = document.createElement('div');
   renderMessageInto(inner, text);
@@ -1511,10 +1653,24 @@ attemptSilentSignIn();
 
 const SYSTEM_INSTRUCTION = "Ikaw ay isang coding at troubleshooting assistant. Maging malinaw, tapat, at praktikal. Gumamit ng code blocks (```) kung kailangan. Sagot sa parehong wika ng tanong (Filipino o English).";
 
-async function askGemini(text){
+function attachmentToTextPrefix(attachment){
+  if (attachment && attachment.kind === 'text') {
+    return '[File: ' + attachment.name + ']\n```\n' + attachment.content + '\n```\n\n';
+  }
+  return '';
+}
+
+async function askGemini(text, attachment){
   const model = 'gemini-3.6-flash';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-  geminiHistory.push({ role: 'user', parts: [{ text }] });
+  const parts = [];
+  if (attachment && attachment.kind === 'image') {
+    parts.push({ text: text || 'Ipaliwanag o tulungan ako tungkol sa larawang ito.' });
+    parts.push({ inlineData: { mimeType: attachment.mimeType, data: attachment.base64 } });
+  } else {
+    parts.push({ text: attachmentToTextPrefix(attachment) + text });
+  }
+  geminiHistory.push({ role: 'user', parts });
   addThinking('thinkingGM', 'GM');
   try {
     const response = await fetch(url, {
@@ -1533,8 +1689,8 @@ async function askGemini(text){
       return;
     }
     const candidate = (data.candidates || [])[0];
-    const parts = candidate && candidate.content && candidate.content.parts ? candidate.content.parts : [];
-    const reply = parts.map(p => p.text || '').join('\n').trim() || 'Walang naibalik na sagot.';
+    const rParts = candidate && candidate.content && candidate.content.parts ? candidate.content.parts : [];
+    const reply = rParts.map(p => p.text || '').join('\n').trim() || 'Walang naibalik na sagot.';
     addMessage('ai', reply, 'GM');
     geminiHistory.push({ role: 'model', parts: [{ text: reply }] });
   } catch (err) {
@@ -1544,8 +1700,14 @@ async function askGemini(text){
   }
 }
 
-async function askGroq(text){
-  groqHistory.push({ role: 'user', content: text });
+async function askGroq(text, attachment){
+  let content;
+  if (attachment && attachment.kind === 'image') {
+    content = text + '\n\n[Paalala: may naka-attach na larawan, pero hindi ito kayang basahin ng modelong ito (text lang). Gamitin ang Gemini o Claude para sa larawan.]';
+  } else {
+    content = attachmentToTextPrefix(attachment) + text;
+  }
+  groqHistory.push({ role: 'user', content });
   addThinking('thinkingGR', 'GR');
   try {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -1576,8 +1738,17 @@ async function askGroq(text){
   }
 }
 
-async function askClaude(text){
-  claudeHistory.push({ role: 'user', content: text });
+async function askClaude(text, attachment){
+  let content;
+  if (attachment && attachment.kind === 'image') {
+    content = [
+      { type: 'image', source: { type: 'base64', media_type: attachment.mimeType, data: attachment.base64 } },
+      { type: 'text', text: text || 'Ipaliwanag o tulungan ako tungkol sa larawang ito.' }
+    ];
+  } else {
+    content = attachmentToTextPrefix(attachment) + text;
+  }
+  claudeHistory.push({ role: 'user', content });
   addThinking('thinkingCL', 'CL');
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -1614,7 +1785,9 @@ async function askClaude(text){
 
 async function send(){
   const text = input.value.trim();
-  if (!text || busy) return;
+  const attachment = pendingAttachment;
+  if (!text && !attachment) return;
+  if (busy) return;
 
   if (!apiKey) {
     apikeyBox.classList.remove('saved');
@@ -1626,12 +1799,14 @@ async function send(){
   sendBtn.disabled = true;
   input.value = '';
   input.style.height = 'auto';
+  pendingAttachment = null;
+  renderChatAttachmentPreview();
 
-  addMessage('user', text);
+  addMessage('user', text, null, attachment);
 
-  const tasks = [askGemini(text)];
-  if (groqKey) tasks.push(askGroq(text));
-  if (claudeKey) tasks.push(askClaude(text));
+  const tasks = [askGemini(text, attachment)];
+  if (groqKey) tasks.push(askGroq(text, attachment));
+  if (claudeKey) tasks.push(askClaude(text, attachment));
 
   try {
     await Promise.all(tasks);
