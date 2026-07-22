@@ -217,6 +217,93 @@
     cursor:pointer;
   }
   .cancel-edit-btn:hover{color:var(--text-hi);}
+
+  .file-upload-box{
+    background:var(--bg-2);
+    border:1px dashed var(--line);
+    border-radius:10px;
+    padding:14px 16px;
+  }
+  .file-upload-label{
+    display:inline-block;
+    font-size:13px;
+    color:var(--violet);
+    cursor:pointer;
+    font-family:'Inter',sans-serif;
+  }
+  .file-upload-box input[type="file"]{
+    display:block;
+    margin-top:8px;
+    font-size:12.5px;
+    color:var(--text-mid);
+    width:100%;
+  }
+  .file-upload-hint{
+    font-size:11.5px;
+    color:var(--text-dim);
+    margin-top:6px;
+    line-height:1.5;
+  }
+  .staged-files{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:10px;
+  }
+  .staged-chip{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background:var(--bg-1);
+    border:1px solid var(--line);
+    border-radius:7px;
+    padding:5px 9px;
+    font-size:12px;
+    color:var(--text-mid);
+  }
+  .attachment-grid{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:10px;
+  }
+  .attachment-thumb{
+    position:relative;
+    width:88px;
+    height:88px;
+    border-radius:8px;
+    overflow:hidden;
+    border:1px solid var(--line);
+  }
+  .attachment-thumb img{
+    width:100%;height:100%;object-fit:cover;display:block;
+  }
+  .attachment-file-chip{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--bg-2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:8px 12px;
+    font-size:12.5px;
+    color:var(--text-mid);
+    text-decoration:none;
+  }
+  .attachment-file-chip:hover{border-color:var(--violet);color:var(--text-hi);}
+  .attachment-remove{
+    position:absolute;
+    top:3px;right:3px;
+    width:18px;height:18px;
+    background:rgba(0,0,0,0.65);
+    color:#fff;
+    border:none;
+    border-radius:50%;
+    font-size:11px;
+    line-height:1;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
   .status-badge{
     display:inline-block;
     font-family:'JetBrains Mono',monospace;
@@ -676,6 +763,12 @@
       </select>
       <textarea id="projLastStop" placeholder="Saan ka huminto? (hal. 'Natapos ko na ang login form, susunod gagawin ang dashboard')"></textarea>
       <textarea id="projNextSteps" placeholder="Ano pa ang kulang / hindi pa tapos? (isang linya bawat isa)"></textarea>
+      <div class="file-upload-box">
+        <label class="file-upload-label" for="projFiles">&#128206; Mag-attach ng photo o file</label>
+        <input type="file" id="projFiles" multiple accept="image/*,.pdf,.doc,.docx,.txt,.zip">
+        <div class="file-upload-hint">Larawan, PDF, Word, o zip &mdash; ilagay nang paunti-unti, mabigat na file kapag marami (naka-store sa browser/Drive).</div>
+        <div class="staged-files" id="stagedFiles"></div>
+      </div>
       <button class="add-project-btn" id="addProjectBtn">+ Idagdag ang proyekto</button>
       <button class="cancel-edit-btn" id="cancelEditBtn" style="display:none;">Kanselahin ang pag-edit</button>
     </div>
@@ -1123,7 +1216,62 @@ const projNextSteps = document.getElementById('projNextSteps');
 const addProjectBtn = document.getElementById('addProjectBtn');
 const cancelEditBtn = document.getElementById('cancelEditBtn');
 const projectList = document.getElementById('projectList');
+const projFiles = document.getElementById('projFiles');
+const stagedFilesEl = document.getElementById('stagedFiles');
 let editingId = null;
+let currentAttachments = [];
+
+function formatFileSize(bytes){
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function renderStagedFiles(){
+  stagedFilesEl.innerHTML = '';
+  currentAttachments.forEach((att, idx) => {
+    const chip = document.createElement('div');
+    chip.className = 'staged-chip';
+    const icon = att.type && att.type.startsWith('image/') ? '\u{1F5BC}' : '\u{1F4C4}';
+    const label = document.createElement('span');
+    label.textContent = icon + ' ' + att.name + ' (' + formatFileSize(att.size) + ')';
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = '\u2715';
+    removeBtn.style.cssText = 'background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;';
+    removeBtn.addEventListener('click', () => {
+      currentAttachments.splice(idx, 1);
+      renderStagedFiles();
+    });
+    chip.appendChild(label);
+    chip.appendChild(removeBtn);
+    stagedFilesEl.appendChild(chip);
+  });
+}
+
+const MAX_ATTACHMENT_SIZE = 4 * 1024 * 1024; // 4MB kada file
+
+projFiles.addEventListener('change', () => {
+  const files = Array.from(projFiles.files || []);
+  files.forEach(file => {
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      alert('Masyadong malaki ang "' + file.name + '" (limitasyon: 4MB kada file).');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      currentAttachments.push({
+        id: Date.now() + '-' + Math.random().toString(36).slice(2),
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        dataUrl: reader.result
+      });
+      renderStagedFiles();
+    };
+    reader.readAsDataURL(file);
+  });
+  projFiles.value = '';
+});
 
 function loadProjects(){
   try {
@@ -1151,6 +1299,8 @@ function resetProjectForm(){
   projStatus.value = 'ongoing';
   projLastStop.value = '';
   projNextSteps.value = '';
+  currentAttachments = [];
+  renderStagedFiles();
   addProjectBtn.textContent = '+ Idagdag ang proyekto';
   cancelEditBtn.style.display = 'none';
 }
@@ -1207,6 +1357,15 @@ function renderProjects(){
     const dateStr = new Date(p.createdAt).toLocaleDateString('fil-PH', { year: 'numeric', month: 'short', day: 'numeric' });
     const status = p.status || 'ongoing';
     const statusHtml = '<span class="status-badge ' + status + '">' + STATUS_LABEL[status] + '</span>';
+    const attachments = p.attachments || [];
+    const attachmentsHtml = attachments.length ? '<div class="attachment-grid">' + attachments.map(att => {
+      if (att.type && att.type.startsWith('image/')) {
+        return '<div class="attachment-thumb"><img src="' + att.dataUrl + '" alt="' + escapeHtml(att.name) + '">' +
+          '<button class="attachment-remove" data-project-id="' + p.id + '" data-att-id="' + att.id + '">\u2715</button></div>';
+      }
+      return '<div style="position:relative;"><a class="attachment-file-chip" href="' + att.dataUrl + '" download="' + escapeHtml(att.name) + '">\u{1F4C4} ' + escapeHtml(att.name) + '</a>' +
+        '<button class="attachment-remove" data-project-id="' + p.id + '" data-att-id="' + att.id + '" style="top:-6px;right:-6px;">\u2715</button></div>';
+    }).join('') + '</div>' : '';
     card.innerHTML = `
       <div class="project-card-top">
         <div>
@@ -1222,6 +1381,7 @@ function renderProjects(){
       ${p.lastStop ? '<div class="project-note-block"><div class="project-note-label">Saan huminto</div><p>' + escapeHtml(p.lastStop).replace(/\n/g,'<br>') + '</p></div>' : ''}
       ${p.nextSteps ? '<div class="project-note-block"><div class="project-note-label">Susunod / kulang pa</div><p>' + escapeHtml(p.nextSteps).replace(/\n/g,'<br>') + '</p></div>' : ''}
       ${p.code ? '<pre>' + escapeHtml(p.code) + '</pre>' : ''}
+      ${attachmentsHtml}
       ${p.link ? '<a class="link" href="' + escapeHtml(p.link) + '" target="_blank" rel="noopener">' + escapeHtml(p.link) + '</a>' : ''}
     `;
     projectList.appendChild(card);
@@ -1233,6 +1393,19 @@ function renderProjects(){
       const updated = loadProjects().filter(p => String(p.id) !== id);
       saveProjects(updated);
       if (editingId && String(editingId) === id) resetProjectForm();
+      renderProjects();
+    });
+  });
+
+  projectList.querySelectorAll('.attachment-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const projectId = btn.getAttribute('data-project-id');
+      const attId = btn.getAttribute('data-att-id');
+      const list = loadProjects();
+      const proj = list.find(p => String(p.id) === projectId);
+      if (!proj) return;
+      proj.attachments = (proj.attachments || []).filter(a => a.id !== attId);
+      saveProjects(list);
       renderProjects();
     });
   });
@@ -1251,6 +1424,8 @@ function renderProjects(){
       projStatus.value = p.status || 'ongoing';
       projLastStop.value = p.lastStop || '';
       projNextSteps.value = p.nextSteps || '';
+      currentAttachments = (p.attachments || []).slice();
+      renderStagedFiles();
       addProjectBtn.textContent = 'I-update ang proyekto';
       cancelEditBtn.style.display = '';
       projTitle.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1279,6 +1454,7 @@ addProjectBtn.addEventListener('click', () => {
         status: projStatus.value,
         lastStop: projLastStop.value.trim(),
         nextSteps: projNextSteps.value.trim(),
+        attachments: currentAttachments.slice(),
         updatedAt: Date.now()
       };
     }
@@ -1293,6 +1469,7 @@ addProjectBtn.addEventListener('click', () => {
       status: projStatus.value,
       lastStop: projLastStop.value.trim(),
       nextSteps: projNextSteps.value.trim(),
+      attachments: currentAttachments.slice(),
       createdAt: Date.now()
     });
   }
