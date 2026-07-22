@@ -285,6 +285,19 @@
   }
   .msg.user .bubble{color:var(--text-hi);}
   .msg.ai .bubble{color:var(--text-hi);}
+  .source-tag{
+    display:inline-block;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:0.3px;
+    text-transform:uppercase;
+    color:var(--text-dim);
+    background:var(--bg-2);
+    border:1px solid var(--line);
+    border-radius:5px;
+    padding:2px 7px;
+    margin-bottom:8px;
+  }
   .bubble p{margin:0 0 12px;}
   .bubble p:last-child{margin-bottom:0;}
   .bubble pre{
@@ -415,7 +428,7 @@
       <p>Ilagay ang error, code, o problema mo sa ibaba. Puwede magtanong nang paulit-ulit, walang bilang ng prompts o oras na limitado dito sa loob ng session mo.</p>
       <div class="disclosure">
         <span>&#9432;</span>
-        <span>Pinapagana ng Google Gemini (libreng API) &mdash; hindi ito literal na koneksyon sa ChatGPT o Claude.</span>
+        <span>Pinapagana ng Google Gemini at Groq/Llama (libre), at opsyonal na Claude (bayad) &mdash; magkaibang AI na may magkaibang lakas.</span>
       </div>
     </div>
 
@@ -426,6 +439,24 @@
         <button class="save-key" id="saveKeyBtn">I-save</button>
       </div>
       <div class="apikey-hint">Kunin ang libreng key sa <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> &mdash; naka-store lang ito sa browser mo, hindi ito napupunta sa amin.</div>
+    </div>
+
+    <div class="apikey-box" id="groqkeyBox">
+      <div class="apikey-label">Opsyonal: ilagay ang libreng Groq API key para makakuha ng pangalawang sagot (Llama model)</div>
+      <div class="apikey-row">
+        <input type="password" id="groqkeyInput" placeholder="gsk_...">
+        <button class="save-key" id="saveGroqKeyBtn">I-save</button>
+      </div>
+      <div class="apikey-hint">Kunin ang libreng key sa <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a> &mdash; magkaibang klase ng AI ito kumpara sa Gemini, kaya magkaiba rin ang lakas nila sa sagot.</div>
+    </div>
+
+    <div class="apikey-box" id="claudekeyBox">
+      <div class="apikey-label">Opsyonal: ilagay ang Claude API key para makakuha ng pangatlong sagot &mdash; <strong>bayad ito, hindi libre</strong> (may $5 trial credit lang)</div>
+      <div class="apikey-row">
+        <input type="password" id="claudekeyInput" placeholder="sk-ant-...">
+        <button class="save-key" id="saveClaudeKeyBtn">I-save</button>
+      </div>
+      <div class="apikey-hint">Kunin sa <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com/settings/keys</a> &mdash; kailangan mong mag-top up ng credits pagkatapos maubos ang $5 trial.</div>
     </div>
 
     <div id="messages"></div>
@@ -490,9 +521,19 @@ const sendBtn = document.getElementById('sendBtn');
 const apikeyBox = document.getElementById('apikeyBox');
 const apikeyInput = document.getElementById('apikeyInput');
 const saveKeyBtn = document.getElementById('saveKeyBtn');
-let history = [];
+const groqkeyBox = document.getElementById('groqkeyBox');
+const groqkeyInput = document.getElementById('groqkeyInput');
+const saveGroqKeyBtn = document.getElementById('saveGroqKeyBtn');
+const claudekeyBox = document.getElementById('claudekeyBox');
+const claudekeyInput = document.getElementById('claudekeyInput');
+const saveClaudeKeyBtn = document.getElementById('saveClaudeKeyBtn');
+let geminiHistory = [];
+let groqHistory = [];
+let claudeHistory = [];
 let busy = false;
 let apiKey = '';
+let groqKey = '';
+let claudeKey = '';
 
 try {
   const stored = localStorage.getItem('gemini_api_key');
@@ -502,12 +543,49 @@ try {
   }
 } catch (e) { /* storage unavailable, ok lang */ }
 
+try {
+  const storedGroq = localStorage.getItem('groq_api_key');
+  if (storedGroq) {
+    groqKey = storedGroq;
+    groqkeyBox.classList.add('saved');
+  }
+} catch (e) {}
+
+try {
+  const storedClaude = localStorage.getItem('claude_api_key');
+  if (storedClaude) {
+    claudeKey = storedClaude;
+    claudekeyBox.classList.add('saved');
+  }
+} catch (e) {}
+
 saveKeyBtn.addEventListener('click', () => {
   const val = apikeyInput.value.trim();
   if (!val) return;
   apiKey = val;
   try { localStorage.setItem('gemini_api_key', val); } catch (e) {}
   apikeyBox.classList.add('saved');
+  pushSettingsToDrive();
+  input.focus();
+});
+
+saveGroqKeyBtn.addEventListener('click', () => {
+  const val = groqkeyInput.value.trim();
+  if (!val) return;
+  groqKey = val;
+  try { localStorage.setItem('groq_api_key', val); } catch (e) {}
+  groqkeyBox.classList.add('saved');
+  pushSettingsToDrive();
+  input.focus();
+});
+
+saveClaudeKeyBtn.addEventListener('click', () => {
+  const val = claudekeyInput.value.trim();
+  if (!val) return;
+  claudeKey = val;
+  try { localStorage.setItem('claude_api_key', val); } catch (e) {}
+  claudekeyBox.classList.add('saved');
+  pushSettingsToDrive();
   input.focus();
 });
 
@@ -540,15 +618,23 @@ function renderMarkdownish(text){
   return escaped;
 }
 
-function addMessage(role, text){
+function addMessage(role, text, label){
   const row = document.createElement('div');
   row.className = 'msg ' + (role === 'user' ? 'user' : 'ai');
   const avatar = document.createElement('div');
   avatar.className = 'avatar';
-  avatar.textContent = role === 'user' ? 'IKA' : 'AI';
+  avatar.textContent = role === 'user' ? 'IKA' : (label || 'AI');
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
-  bubble.innerHTML = renderMarkdownish(text);
+  if (label) {
+    const tag = document.createElement('div');
+    tag.className = 'source-tag';
+    tag.textContent = label === 'GM' ? 'Gemini (Google)' : label === 'GR' ? 'Llama (Groq)' : 'Claude (Anthropic)';
+    bubble.appendChild(tag);
+  }
+  const inner = document.createElement('div');
+  inner.innerHTML = renderMarkdownish(text);
+  bubble.appendChild(inner);
   row.appendChild(avatar);
   row.appendChild(bubble);
   messagesEl.appendChild(row);
@@ -556,17 +642,18 @@ function addMessage(role, text){
   return bubble;
 }
 
-function addThinking(){
+function addThinking(id, label){
   const row = document.createElement('div');
   row.className = 'msg ai';
-  row.id = 'thinkingRow';
-  row.innerHTML = '<div class="avatar">AI</div><div class="bubble"><div class="thinking"><span></span><span></span><span></span></div></div>';
+  row.id = id;
+  const tagHtml = label ? '<div class="source-tag">' + (label === 'GM' ? 'Gemini (Google)' : label === 'GR' ? 'Llama (Groq)' : 'Claude (Anthropic)') + '</div>' : '';
+  row.innerHTML = '<div class="avatar">' + (label || 'AI') + '</div><div class="bubble">' + tagHtml + '<div class="thinking"><span></span><span></span><span></span></div></div>';
   messagesEl.appendChild(row);
   document.getElementById('thread').scrollTop = document.getElementById('thread').scrollHeight;
 }
 
-function removeThinking(){
-  const r = document.getElementById('thinkingRow');
+function removeThinking(id){
+  const r = document.getElementById(id);
   if (r) r.remove();
 }
 
@@ -604,11 +691,14 @@ const driveSignOutBtn = document.getElementById('driveSignOutBtn');
 let googleClientId = '';
 let accessToken = null;
 let driveFileId = null;
+let settingsFileId = null;
 let tokenClient = null;
 const DRIVE_FILE_NAME = 'iisa_projects.json';
+const DRIVE_SETTINGS_FILE_NAME = 'nexus_settings.json';
 
 try { googleClientId = localStorage.getItem('google_client_id') || ''; } catch (e) {}
 try { driveFileId = localStorage.getItem('drive_file_id') || null; } catch (e) {}
+try { settingsFileId = localStorage.getItem('drive_settings_file_id') || null; } catch (e) {}
 
 function refreshDriveUI(){
   if (accessToken) {
@@ -644,6 +734,7 @@ driveSignInBtn.addEventListener('click', () => {
       accessToken = resp.access_token;
       refreshDriveUI();
       await syncFromDrive();
+      await syncSettingsFromDrive();
     }
   });
   tokenClient.requestAccessToken();
@@ -662,15 +753,15 @@ async function driveApi(path, options = {}) {
   return fetch(path, options);
 }
 
-async function findDriveFile(){
-  const res = await driveApi("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name)&q=" + encodeURIComponent(`name='${DRIVE_FILE_NAME}'`));
+async function findDriveFile(fileName){
+  const res = await driveApi("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name)&q=" + encodeURIComponent(`name='${fileName}'`));
   const data = await res.json();
   const files = data.files || [];
   return files.length ? files[0].id : null;
 }
 
-async function createDriveFile(initialContent){
-  const metadata = { name: DRIVE_FILE_NAME, parents: ['appDataFolder'] };
+async function createDriveFile(fileName, initialContent){
+  const metadata = { name: fileName, parents: ['appDataFolder'] };
   const boundary = 'iisa_boundary';
   const body =
     `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
@@ -687,25 +778,25 @@ async function createDriveFile(initialContent){
 
 async function readDriveFile(fileId){
   const res = await driveApi(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
-  if (!res.ok) return [];
-  try { return await res.json(); } catch (e) { return []; }
+  if (!res.ok) return null;
+  try { return await res.json(); } catch (e) { return null; }
 }
 
-async function writeDriveFile(fileId, list){
+async function writeDriveFile(fileId, contentObj){
   await driveApi(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(list)
+    body: JSON.stringify(contentObj)
   });
 }
 
 async function syncFromDrive(){
   try {
     let fileId = driveFileId;
-    if (!fileId) fileId = await findDriveFile();
+    if (!fileId) fileId = await findDriveFile(DRIVE_FILE_NAME);
     if (!fileId) {
       const local = loadProjects();
-      fileId = await createDriveFile(JSON.stringify(local));
+      fileId = await createDriveFile(DRIVE_FILE_NAME, JSON.stringify(local));
     }
     driveFileId = fileId;
     try { localStorage.setItem('drive_file_id', fileId); } catch (e) {}
@@ -713,6 +804,31 @@ async function syncFromDrive(){
     saveProjects(Array.isArray(driveList) ? driveList : []);
     renderProjects();
   } catch (e) { console.error('Drive sync error', e); }
+}
+
+// ---- Sync API keys via Drive (private appdata file, not the public HTML) ----
+async function syncSettingsFromDrive(){
+  try {
+    let fileId = settingsFileId;
+    if (!fileId) fileId = await findDriveFile(DRIVE_SETTINGS_FILE_NAME);
+    const localSettings = { gemini: apiKey, groq: groqKey, claude: claudeKey };
+    if (!fileId) {
+      fileId = await createDriveFile(DRIVE_SETTINGS_FILE_NAME, JSON.stringify(localSettings));
+    }
+    settingsFileId = fileId;
+    try { localStorage.setItem('drive_settings_file_id', fileId); } catch (e) {}
+    const remote = await readDriveFile(fileId);
+    if (remote && typeof remote === 'object') {
+      if (remote.gemini) { apiKey = remote.gemini; try { localStorage.setItem('gemini_api_key', remote.gemini); } catch (e) {} apikeyBox.classList.add('saved'); }
+      if (remote.groq) { groqKey = remote.groq; try { localStorage.setItem('groq_api_key', remote.groq); } catch (e) {} groqkeyBox.classList.add('saved'); }
+      if (remote.claude) { claudeKey = remote.claude; try { localStorage.setItem('claude_api_key', remote.claude); } catch (e) {} claudekeyBox.classList.add('saved'); }
+    }
+  } catch (e) { console.error('Drive settings sync error', e); }
+}
+
+function pushSettingsToDrive(){
+  if (!accessToken || !settingsFileId) return;
+  writeDriveFile(settingsFileId, { gemini: apiKey, groq: groqKey, claude: claudeKey }).catch(e => console.error('Drive settings save error', e));
 }
 
 // ---- Projects storage ----
@@ -801,7 +917,135 @@ addProjectBtn.addEventListener('click', () => {
 refreshDriveUI();
 renderProjects();
 
+// Awtomatikong subukan mag-sign in nang tahimik (walang popup/click)
+// kung dati ka nang naka-sign in sa parehong browser.
+function attemptSilentSignIn(triesLeft = 20){
+  if (!googleClientId) return;
+  if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+    if (triesLeft > 0) setTimeout(() => attemptSilentSignIn(triesLeft - 1), 250);
+    return;
+  }
+  const silentClient = google.accounts.oauth2.initTokenClient({
+    client_id: googleClientId,
+    scope: 'https://www.googleapis.com/auth/drive.appdata',
+    prompt: '',
+    callback: async (resp) => {
+      if (resp && resp.access_token) {
+        accessToken = resp.access_token;
+        refreshDriveUI();
+        await syncFromDrive();
+        await syncSettingsFromDrive();
+      }
+      // Kung nabigo (walang session/consent pa), mananatiling nakalabas
+      // ang "Mag-sign in" button para pindutin nang minsan.
+    }
+  });
+  silentClient.requestAccessToken();
+}
+attemptSilentSignIn();
+
 const SYSTEM_INSTRUCTION = "Ikaw ay isang coding at troubleshooting assistant. Maging malinaw, tapat, at praktikal. Gumamit ng code blocks (```) kung kailangan. Sagot sa parehong wika ng tanong (Filipino o English).";
+
+async function askGemini(text){
+  const model = 'gemini-3.6-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  geminiHistory.push({ role: 'user', parts: [{ text }] });
+  addThinking('thinkingGM', 'GM');
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: geminiHistory,
+        systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] }
+      })
+    });
+    const data = await response.json();
+    removeThinking('thinkingGM');
+    if (data.error) {
+      addMessage('ai', 'Error: ' + (data.error.message || 'May isyu sa Gemini key mo.'), 'GM');
+      geminiHistory.pop();
+      return;
+    }
+    const candidate = (data.candidates || [])[0];
+    const parts = candidate && candidate.content && candidate.content.parts ? candidate.content.parts : [];
+    const reply = parts.map(p => p.text || '').join('\n').trim() || 'Walang naibalik na sagot.';
+    addMessage('ai', reply, 'GM');
+    geminiHistory.push({ role: 'model', parts: [{ text: reply }] });
+  } catch (err) {
+    removeThinking('thinkingGM');
+    addMessage('ai', 'May error sa koneksyon sa Gemini.', 'GM');
+    console.error(err);
+  }
+}
+
+async function askGroq(text){
+  groqHistory.push({ role: 'user', content: text });
+  addThinking('thinkingGR', 'GR');
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + groqKey
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "system", content: SYSTEM_INSTRUCTION }, ...groqHistory]
+      })
+    });
+    const data = await response.json();
+    removeThinking('thinkingGR');
+    if (data.error) {
+      addMessage('ai', 'Error: ' + (data.error.message || 'May isyu sa Groq key mo.'), 'GR');
+      groqHistory.pop();
+      return;
+    }
+    const reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || 'Walang naibalik na sagot.';
+    addMessage('ai', reply, 'GR');
+    groqHistory.push({ role: 'assistant', content: reply });
+  } catch (err) {
+    removeThinking('thinkingGR');
+    addMessage('ai', 'May error sa koneksyon sa Groq.', 'GR');
+    console.error(err);
+  }
+}
+
+async function askClaude(text){
+  claudeHistory.push({ role: 'user', content: text });
+  addThinking('thinkingCL', 'CL');
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": claudeKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-5",
+        max_tokens: 1024,
+        system: SYSTEM_INSTRUCTION,
+        messages: claudeHistory
+      })
+    });
+    const data = await response.json();
+    removeThinking('thinkingCL');
+    if (data.error) {
+      addMessage('ai', 'Error: ' + (data.error.message || 'May isyu sa Claude key mo.'), 'CL');
+      claudeHistory.pop();
+      return;
+    }
+    const reply = (data.content || []).map(b => b.text || '').join('\n').trim() || 'Walang naibalik na sagot.';
+    addMessage('ai', reply, 'CL');
+    claudeHistory.push({ role: 'assistant', content: reply });
+  } catch (err) {
+    removeThinking('thinkingCL');
+    addMessage('ai', 'May error sa koneksyon sa Claude.', 'CL');
+    console.error(err);
+  }
+}
 
 async function send(){
   const text = input.value.trim();
@@ -819,38 +1063,13 @@ async function send(){
   input.style.height = 'auto';
 
   addMessage('user', text);
-  history.push({ role: 'user', parts: [{ text }] });
-  addThinking();
+
+  const tasks = [askGemini(text)];
+  if (groqKey) tasks.push(askGroq(text));
+  if (claudeKey) tasks.push(askClaude(text));
 
   try {
-    const model = 'gemini-3.6-flash';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: history,
-        systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] }
-      })
-    });
-    const data = await response.json();
-    removeThinking();
-
-    if (data.error) {
-      addMessage('ai', 'Error mula sa API: ' + (data.error.message || 'Hindi valid ang key o may isyu sa request. Suriin ang API key mo.'));
-      history.pop();
-      return;
-    }
-
-    const candidate = (data.candidates || [])[0];
-    const parts = candidate && candidate.content && candidate.content.parts ? candidate.content.parts : [];
-    const reply = parts.map(p => p.text || '').join('\n').trim() || 'Pasensya, walang naibalik na sagot. Subukan ulit.';
-    addMessage('ai', reply);
-    history.push({ role: 'model', parts: [{ text: reply }] });
-  } catch (err) {
-    removeThinking();
-    addMessage('ai', 'May naganap na error sa koneksyon. Subukan ulit.');
-    console.error(err);
+    await Promise.all(tasks);
   } finally {
     busy = false;
     sendBtn.disabled = false;
