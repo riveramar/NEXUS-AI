@@ -94,6 +94,67 @@
     font-size:28px;font-weight:600;margin:0 0 10px;line-height:1.3;
   }
   .projects-intro p{color:var(--text-mid);font-size:14.5px;line-height:1.7;margin:0;max-width:620px;}
+
+  .dashboard{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:12px;
+    margin-bottom:24px;
+  }
+  .stat-card{
+    background:var(--bg-1);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:16px 18px;
+  }
+  .stat-card .stat-value{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:26px;
+    font-weight:600;
+    color:var(--text-hi);
+    line-height:1.2;
+  }
+  .stat-card .stat-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.3px;
+    color:var(--text-dim);
+    margin-top:4px;
+  }
+  .stat-card.accent-violet .stat-value{color:var(--violet);}
+  .stat-card.accent-amber .stat-value{color:var(--amber);}
+  .stat-card.accent-cyan .stat-value{color:var(--cyan);}
+  .dashboard-progress{
+    grid-column:1 / -1;
+    background:var(--bg-1);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:14px 18px;
+  }
+  .dashboard-progress-top{
+    display:flex;
+    justify-content:space-between;
+    font-size:12.5px;
+    color:var(--text-mid);
+    margin-bottom:8px;
+  }
+  .progress-track{
+    width:100%;
+    height:8px;
+    background:var(--bg-2);
+    border-radius:5px;
+    overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;
+    background:linear-gradient(90deg, var(--violet), var(--cyan));
+    border-radius:5px;
+    transition:width 0.3s ease;
+  }
+  @media (max-width: 640px){
+    .dashboard{grid-template-columns:repeat(2, 1fr);}
+  }
   .drive-box{
     background:var(--bg-1);
     border:1px solid var(--line);
@@ -578,6 +639,8 @@
       <h1>Mga proyekto mo</h1>
       <p>Itala dito ang mga proyektong nagawa mo &mdash; pangalan, maikling paglalarawan, at kahit code snippet o link. I-sync sa Google Drive mo para makuha mo ito kahit saang device.</p>
     </div>
+
+    <div class="dashboard" id="projectDashboard"></div>
 
     <div class="drive-box" id="driveBox">
       <div id="driveSetup">
@@ -1092,7 +1155,45 @@ function resetProjectForm(){
   cancelEditBtn.style.display = 'none';
 }
 
+const projectDashboard = document.getElementById('projectDashboard');
+
+function renderDashboard(){
+  const list = loadProjects();
+  const total = list.length;
+  const ongoing = list.filter(p => (p.status || 'ongoing') === 'ongoing').length;
+  const paused = list.filter(p => p.status === 'paused').length;
+  const done = list.filter(p => p.status === 'done').length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  projectDashboard.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-value">${total}</div>
+      <div class="stat-label">Kabuuang proyekto</div>
+    </div>
+    <div class="stat-card accent-violet">
+      <div class="stat-value">${ongoing}</div>
+      <div class="stat-label">Ginagawa pa</div>
+    </div>
+    <div class="stat-card accent-amber">
+      <div class="stat-value">${paused}</div>
+      <div class="stat-label">Naka-pause</div>
+    </div>
+    <div class="stat-card accent-cyan">
+      <div class="stat-value">${done}</div>
+      <div class="stat-label">Tapos na</div>
+    </div>
+    <div class="dashboard-progress">
+      <div class="dashboard-progress-top">
+        <span>Kabuuang progress</span>
+        <span>${pct}% tapos</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" style="width:${pct}%;"></div></div>
+    </div>
+  `;
+}
+
 function renderProjects(){
+  renderDashboard();
   const list = loadProjects();
   projectList.innerHTML = '';
   if (list.length === 0) {
