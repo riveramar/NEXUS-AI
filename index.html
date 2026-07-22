@@ -132,6 +132,58 @@
   .project-form input:focus,
   .project-form textarea:focus{border-color:var(--violet);}
   .project-form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .project-form select{
+    width:100%;
+    background:var(--bg-2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:9px 12px;
+    color:var(--text-hi);
+    font-family:'Inter',sans-serif;
+    font-size:13.5px;
+    outline:none;
+  }
+  .project-form select:focus{border-color:var(--violet);}
+  .cancel-edit-btn{
+    justify-self:start;
+    background:none;
+    border:1px solid var(--line);
+    color:var(--text-mid);
+    border-radius:8px;
+    padding:9px 18px;
+    font-size:13.5px;
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+  }
+  .cancel-edit-btn:hover{color:var(--text-hi);}
+  .status-badge{
+    display:inline-block;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:0.3px;
+    padding:2px 8px;
+    border-radius:5px;
+  }
+  .status-badge.ongoing{background:rgba(124,108,255,0.15);color:var(--violet);}
+  .status-badge.paused{background:rgba(255,180,84,0.15);color:var(--amber);}
+  .status-badge.done{background:rgba(47,217,196,0.15);color:var(--cyan);}
+  .project-note-block{margin-top:10px;}
+  .project-note-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.3px;
+    color:var(--text-dim);
+    margin-bottom:4px;
+  }
+  .project-note-block p{margin:0;font-size:13.5px;color:var(--text-mid);line-height:1.6;}
+  .edit-project{
+    background:none;border:1px solid var(--line);color:var(--text-dim);
+    border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;flex-shrink:0;
+    margin-right:6px;
+  }
+  .edit-project:hover{border-color:var(--violet);color:var(--violet);}
   .add-project-btn{
     justify-self:start;
     background:var(--violet);
@@ -554,7 +606,15 @@
         <input type="text" id="projLink" placeholder="Link (opsyonal &mdash; GitHub, live demo)">
       </div>
       <textarea id="projCode" placeholder="Code snippet (opsyonal)"></textarea>
+      <select id="projStatus">
+        <option value="ongoing">Ginagawa pa</option>
+        <option value="paused">Naka-pause</option>
+        <option value="done">Tapos na</option>
+      </select>
+      <textarea id="projLastStop" placeholder="Saan ka huminto? (hal. 'Natapos ko na ang login form, susunod gagawin ang dashboard')"></textarea>
+      <textarea id="projNextSteps" placeholder="Ano pa ang kulang / hindi pa tapos? (isang linya bawat isa)"></textarea>
       <button class="add-project-btn" id="addProjectBtn">+ Idagdag ang proyekto</button>
+      <button class="cancel-edit-btn" id="cancelEditBtn" style="display:none;">Kanselahin ang pag-edit</button>
     </div>
 
     <div class="project-list" id="projectList"></div>
@@ -994,8 +1054,13 @@ const projDesc = document.getElementById('projDesc');
 const projTags = document.getElementById('projTags');
 const projLink = document.getElementById('projLink');
 const projCode = document.getElementById('projCode');
+const projStatus = document.getElementById('projStatus');
+const projLastStop = document.getElementById('projLastStop');
+const projNextSteps = document.getElementById('projNextSteps');
 const addProjectBtn = document.getElementById('addProjectBtn');
+const cancelEditBtn = document.getElementById('cancelEditBtn');
 const projectList = document.getElementById('projectList');
+let editingId = null;
 
 function loadProjects(){
   try {
@@ -1011,6 +1076,22 @@ function saveProjects(list){
   }
 }
 
+const STATUS_LABEL = { ongoing: 'Ginagawa pa', paused: 'Naka-pause', done: 'Tapos na' };
+
+function resetProjectForm(){
+  editingId = null;
+  projTitle.value = '';
+  projDesc.value = '';
+  projTags.value = '';
+  projLink.value = '';
+  projCode.value = '';
+  projStatus.value = 'ongoing';
+  projLastStop.value = '';
+  projNextSteps.value = '';
+  addProjectBtn.textContent = '+ Idagdag ang proyekto';
+  cancelEditBtn.style.display = 'none';
+}
+
 function renderProjects(){
   const list = loadProjects();
   projectList.innerHTML = '';
@@ -1023,15 +1104,22 @@ function renderProjects(){
     card.className = 'project-card';
     const tagsHtml = p.tags ? escapeHtml(p.tags) : '';
     const dateStr = new Date(p.createdAt).toLocaleDateString('fil-PH', { year: 'numeric', month: 'short', day: 'numeric' });
+    const status = p.status || 'ongoing';
+    const statusHtml = '<span class="status-badge ' + status + '">' + STATUS_LABEL[status] + '</span>';
     card.innerHTML = `
       <div class="project-card-top">
         <div>
           <h3>${escapeHtml(p.title)}</h3>
-          <div class="meta">${dateStr}${tagsHtml ? ' &middot; ' + tagsHtml : ''}</div>
+          <div class="meta">${statusHtml} &middot; ${dateStr}${tagsHtml ? ' &middot; ' + tagsHtml : ''}</div>
         </div>
-        <button class="delete-project" data-id="${p.id}">Tanggalin</button>
+        <div style="display:flex;flex-shrink:0;">
+          <button class="edit-project" data-id="${p.id}">I-edit</button>
+          <button class="delete-project" data-id="${p.id}">Tanggalin</button>
+        </div>
       </div>
       ${p.desc ? '<p>' + escapeHtml(p.desc).replace(/\n/g,'<br>') + '</p>' : ''}
+      ${p.lastStop ? '<div class="project-note-block"><div class="project-note-label">Saan huminto</div><p>' + escapeHtml(p.lastStop).replace(/\n/g,'<br>') + '</p></div>' : ''}
+      ${p.nextSteps ? '<div class="project-note-block"><div class="project-note-label">Susunod / kulang pa</div><p>' + escapeHtml(p.nextSteps).replace(/\n/g,'<br>') + '</p></div>' : ''}
       ${p.code ? '<pre>' + escapeHtml(p.code) + '</pre>' : ''}
       ${p.link ? '<a class="link" href="' + escapeHtml(p.link) + '" target="_blank" rel="noopener">' + escapeHtml(p.link) + '</a>' : ''}
     `;
@@ -1043,31 +1131,73 @@ function renderProjects(){
       const id = btn.getAttribute('data-id');
       const updated = loadProjects().filter(p => String(p.id) !== id);
       saveProjects(updated);
+      if (editingId && String(editingId) === id) resetProjectForm();
       renderProjects();
+    });
+  });
+
+  projectList.querySelectorAll('.edit-project').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-id');
+      const p = loadProjects().find(item => String(item.id) === id);
+      if (!p) return;
+      editingId = p.id;
+      projTitle.value = p.title || '';
+      projDesc.value = p.desc || '';
+      projTags.value = p.tags || '';
+      projLink.value = p.link || '';
+      projCode.value = p.code || '';
+      projStatus.value = p.status || 'ongoing';
+      projLastStop.value = p.lastStop || '';
+      projNextSteps.value = p.nextSteps || '';
+      addProjectBtn.textContent = 'I-update ang proyekto';
+      cancelEditBtn.style.display = '';
+      projTitle.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      projTitle.focus();
     });
   });
 }
 
+cancelEditBtn.addEventListener('click', resetProjectForm);
+
 addProjectBtn.addEventListener('click', () => {
   const title = projTitle.value.trim();
   if (!title) { projTitle.focus(); return; }
-  const newProject = {
-    id: Date.now(),
-    title,
-    desc: projDesc.value.trim(),
-    tags: projTags.value.trim(),
-    link: projLink.value.trim(),
-    code: projCode.value.trim(),
-    createdAt: Date.now()
-  };
   const list = loadProjects();
-  list.push(newProject);
+
+  if (editingId) {
+    const idx = list.findIndex(p => String(p.id) === String(editingId));
+    if (idx !== -1) {
+      list[idx] = {
+        ...list[idx],
+        title,
+        desc: projDesc.value.trim(),
+        tags: projTags.value.trim(),
+        link: projLink.value.trim(),
+        code: projCode.value.trim(),
+        status: projStatus.value,
+        lastStop: projLastStop.value.trim(),
+        nextSteps: projNextSteps.value.trim(),
+        updatedAt: Date.now()
+      };
+    }
+  } else {
+    list.push({
+      id: Date.now(),
+      title,
+      desc: projDesc.value.trim(),
+      tags: projTags.value.trim(),
+      link: projLink.value.trim(),
+      code: projCode.value.trim(),
+      status: projStatus.value,
+      lastStop: projLastStop.value.trim(),
+      nextSteps: projNextSteps.value.trim(),
+      createdAt: Date.now()
+    });
+  }
+
   saveProjects(list);
-  projTitle.value = '';
-  projDesc.value = '';
-  projTags.value = '';
-  projLink.value = '';
-  projCode.value = '';
+  resetProjectForm();
   renderProjects();
 });
 
