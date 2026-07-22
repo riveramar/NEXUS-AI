@@ -320,6 +320,65 @@
   }
   .bubble pre code{background:none;padding:0;}
 
+  .code-card{
+    background:var(--bg-1);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px 14px;
+    margin:10px 0;
+  }
+  .code-card-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+  }
+  .code-card-lang{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:0.4px;
+    color:var(--violet);
+    background:var(--violet-dim);
+    padding:2px 8px;
+    border-radius:5px;
+  }
+  .code-card-lines{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11.5px;
+    color:var(--text-dim);
+  }
+  .code-card-actions{display:flex;gap:8px;}
+  .code-toggle-btn,
+  .code-download-btn{
+    font-family:'Inter',sans-serif;
+    font-size:12.5px;
+    padding:6px 12px;
+    border-radius:7px;
+    cursor:pointer;
+    border:1px solid var(--line);
+    background:var(--bg-2);
+    color:var(--text-mid);
+  }
+  .code-toggle-btn:hover{color:var(--text-hi);}
+  .code-download-btn{
+    background:var(--violet);
+    border-color:var(--violet);
+    color:#fff;
+  }
+  .code-download-btn:hover{opacity:0.88;}
+  .code-card-pre{
+    margin-top:12px;
+    background:var(--bg-2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:12px 14px;
+    overflow-x:auto;
+    font-family:'JetBrains Mono',monospace;
+    font-size:12.5px;
+    line-height:1.6;
+  }
+
   .thinking{display:flex;gap:5px;padding-top:8px;}
   .thinking span{
     width:6px;height:6px;border-radius:50%;background:var(--text-dim);
@@ -605,17 +664,115 @@ function escapeHtml(s){
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-function renderMarkdownish(text){
-  let escaped = escapeHtml(text);
-  escaped = escaped.replace(/```([a-zA-Z]*)\n([\s\S]*?)```/g, (m, lang, code) => {
-    return '<pre><code>' + code.replace(/\n$/,'') + '</code></pre>';
-  });
+const LANG_EXT = {
+  javascript: 'js', js: 'js', typescript: 'ts', ts: 'ts', jsx: 'jsx', tsx: 'tsx',
+  python: 'py', py: 'py', html: 'html', css: 'css', java: 'java',
+  c: 'c', cpp: 'cpp', 'c++': 'cpp', csharp: 'cs', cs: 'cs', php: 'php',
+  json: 'json', bash: 'sh', sh: 'sh', shell: 'sh', sql: 'sql', ruby: 'rb',
+  go: 'go', rust: 'rs', kotlin: 'kt', swift: 'swift', xml: 'xml', yaml: 'yml', yml: 'yml'
+};
+
+function renderTextSegment(seg){
+  let escaped = escapeHtml(seg);
   escaped = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
-  escaped = escaped.split(/\n{2,}/).map(p => {
-    if (p.startsWith('<pre>')) return p;
-    return '<p>' + p.replace(/\n/g,'<br>') + '</p>';
-  }).join('');
-  return escaped;
+  return escaped.split(/\n{2,}/).filter(p => p.trim()).map(p => '<p>' + p.replace(/\n/g,'<br>') + '</p>').join('');
+}
+
+function buildCodeCard(lang, code){
+  const cleanCode = code.replace(/\n$/, '');
+  const lineCount = cleanCode.split('\n').length;
+  const ext = LANG_EXT[(lang || '').toLowerCase()] || 'txt';
+  const filename = 'code-' + Date.now() + '.' + ext;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'code-card';
+
+  const top = document.createElement('div');
+  top.className = 'code-card-top';
+  top.innerHTML = '<span class="code-card-lang">' + escapeHtml(lang || 'code') + '</span><span class="code-card-lines">' + lineCount + ' linya</span>';
+  wrap.appendChild(top);
+
+  const actions = document.createElement('div');
+  actions.className = 'code-card-actions';
+  const toggleBtn = document.createElement('button');
+  toggleBtn.className = 'code-toggle-btn';
+  toggleBtn.textContent = 'Tingnan ang code';
+  const downloadBtn = document.createElement('button');
+  downloadBtn.className = 'code-download-btn';
+  downloadBtn.textContent = '\u2B07 I-download';
+  actions.appendChild(toggleBtn);
+  actions.appendChild(downloadBtn);
+  wrap.appendChild(actions);
+
+  const pre = document.createElement('pre');
+  pre.className = 'code-card-pre';
+  pre.style.display = 'none';
+  const codeEl = document.createElement('code');
+  codeEl.textContent = cleanCode;
+  pre.appendChild(codeEl);
+  wrap.appendChild(pre);
+
+  toggleBtn.addEventListener('click', () => {
+    const showing = pre.style.display !== 'none';
+    pre.style.display = showing ? 'none' : 'block';
+    toggleBtn.textContent = showing ? 'Tingnan ang code' : 'Itago ang code';
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    const blob = new Blob([cleanCode], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  return wrap;
+}
+
+// Kung maikli lang ang code (5 linya o mas mababa), sapat nang ipakita
+// nang diretso sa loob ng chat kaysa gawing card.
+const CODE_CARD_LINE_THRESHOLD = 5;
+
+function renderMessageInto(container, text){
+  const regex = /```([a-zA-Z0-9+#]*)\n([\s\S]*?)```/g;
+  let lastIndex = 0;
+  let match;
+  let found = false;
+  while ((match = regex.exec(text)) !== null) {
+    found = true;
+    const before = text.slice(lastIndex, match.index);
+    if (before.trim()) {
+      const seg = document.createElement('div');
+      seg.innerHTML = renderTextSegment(before);
+      container.appendChild(seg);
+    }
+    const lang = match[1];
+    const code = match[2];
+    const lineCount = code.replace(/\n$/, '').split('\n').length;
+    if (lineCount <= CODE_CARD_LINE_THRESHOLD) {
+      const pre = document.createElement('pre');
+      const codeEl = document.createElement('code');
+      codeEl.textContent = code.replace(/\n$/, '');
+      pre.appendChild(codeEl);
+      container.appendChild(pre);
+    } else {
+      container.appendChild(buildCodeCard(lang, code));
+    }
+    lastIndex = regex.lastIndex;
+  }
+  const rest = text.slice(lastIndex);
+  if (rest.trim()) {
+    const seg = document.createElement('div');
+    seg.innerHTML = renderTextSegment(rest);
+    container.appendChild(seg);
+  }
+  if (!found && !text.trim()) {
+    container.innerHTML = renderTextSegment(text);
+  }
 }
 
 function addMessage(role, text, label){
@@ -633,7 +790,7 @@ function addMessage(role, text, label){
     bubble.appendChild(tag);
   }
   const inner = document.createElement('div');
-  inner.innerHTML = renderMarkdownish(text);
+  renderMessageInto(inner, text);
   bubble.appendChild(inner);
   row.appendChild(avatar);
   row.appendChild(bubble);
