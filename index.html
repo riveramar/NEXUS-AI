@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 <style>
   :root{
     --bg-0:#0B0D12;
@@ -21,6 +22,19 @@
     --cyan:#2FD9C4;
     --amber:#FFB454;
   }
+  body[data-theme="light"]{
+    --bg-0:#F7F7FA;
+    --bg-1:#FFFFFF;
+    --bg-2:#F0F1F5;
+    --line:#E1E3EA;
+    --text-hi:#1B1E27;
+    --text-mid:#585F70;
+    --text-dim:#9299A8;
+    --violet:#6C5CE7;
+    --violet-dim:#EDE9FF;
+    --cyan:#0E9E8C;
+    --amber:#C97F16;
+  }
   *{box-sizing:border-box;}
   html,body{height:100%;}
   body{
@@ -28,67 +42,279 @@
     background:var(--bg-0);
     color:var(--text-hi);
     font-family:'Inter',sans-serif;
+  }
+
+  .app-shell{
+    display:flex;
+    height:100vh;
+    width:100%;
+  }
+
+  .sidebar{
+    width:232px;
+    flex-shrink:0;
+    background:var(--bg-1);
+    border-right:1px solid var(--line);
     display:flex;
     flex-direction:column;
+    padding:20px 14px;
   }
-  header{
+  .sidebar-brand{
     display:flex;
     align-items:center;
-    justify-content:space-between;
-    padding:18px 28px;
+    gap:11px;
+    padding:0 8px 20px;
+    margin-bottom:16px;
     border-bottom:1px solid var(--line);
-    flex-shrink:0;
   }
-  .brand{
-    display:flex;
-    align-items:center;
-    gap:12px;
-  }
-  .mark{
-    width:34px;height:34px;position:relative;
-  }
+  .mark{width:32px;height:32px;flex-shrink:0;}
   .mark svg{width:100%;height:100%;}
   .brand-text{
     font-family:'Space Grotesk',sans-serif;
     font-weight:600;
-    font-size:18px;
+    font-size:16.5px;
     letter-spacing:0.2px;
+    line-height:1.2;
   }
   .brand-sub{
-    font-size:11px;
+    font-size:10.5px;
     color:var(--text-dim);
     font-family:'JetBrains Mono',monospace;
-    margin-top:1px;
+    margin-top:2px;
   }
-  .status{
-    display:flex;align-items:center;gap:8px;
-    font-family:'JetBrains Mono',monospace;
-    font-size:12px;
-    color:var(--text-mid);
-  }
-  .tabs{
+
+  .sidebar-nav{
     display:flex;
-    gap:4px;
-    background:var(--bg-1);
-    border:1px solid var(--line);
-    border-radius:9px;
-    padding:3px;
+    flex-direction:column;
+    gap:3px;
+    flex:1;
   }
-  .tab-btn{
+  .nav-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    width:100%;
     border:none;
     background:none;
     color:var(--text-mid);
     font-family:'Inter',sans-serif;
-    font-size:13px;
-    padding:6px 14px;
-    border-radius:7px;
+    font-size:13.5px;
+    padding:9px 12px;
+    border-radius:8px;
     cursor:pointer;
+    text-align:left;
     transition:background 0.15s, color 0.15s;
   }
-  .tab-btn:hover{color:var(--text-hi);}
-  .tab-btn.active{background:var(--violet-dim);color:var(--violet);}
+  .nav-item svg{flex-shrink:0;}
+  .nav-item:hover{background:var(--bg-2);color:var(--text-hi);}
+  .nav-item.active{background:var(--violet-dim);color:var(--violet);}
+
+  .new-chat-btn{
+    width:100%;
+    background:var(--violet);
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:9px 12px;
+    font-size:13px;
+    font-family:'Inter',sans-serif;
+    font-weight:500;
+    cursor:pointer;
+    margin:10px 0 8px;
+    flex-shrink:0;
+  }
+  .new-chat-btn:hover{opacity:0.88;}
+  .conversation-list{
+    flex:1;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    min-height:40px;
+  }
+  .conversation-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:6px;
+    padding:8px 10px;
+    border-radius:7px;
+    cursor:pointer;
+    font-size:12.5px;
+    color:var(--text-mid);
+  }
+  .conversation-item:hover{background:var(--bg-2);color:var(--text-hi);}
+  .conversation-item.active{background:var(--violet-dim);color:var(--violet);}
+  .conversation-item .conv-title{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    flex:1;
+  }
+  .conversation-item .conv-delete{
+    background:none;border:none;color:var(--text-dim);
+    font-size:11px;cursor:pointer;flex-shrink:0;padding:2px 4px;
+    opacity:0;
+  }
+  .conversation-item:hover .conv-delete{opacity:1;}
+  .conversation-item .conv-delete:hover{color:#E05C5C;}
+
+  .sidebar-footer{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    padding-top:14px;
+    border-top:1px solid var(--line);
+  }
+  .status-pill{
+    display:flex;align-items:center;gap:7px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--text-dim);
+    padding:4px 12px;
+  }
+
+  .main-col{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    min-width:0;
+  }
+
+  .settings-gear-btn{display:none;}
+
+  @media (max-width: 700px){
+    .app-shell{flex-direction:column;height:100vh;}
+    .sidebar{
+      width:100%;
+      flex-direction:row;
+      align-items:center;
+      padding:10px 14px;
+      border-right:none;
+      border-bottom:1px solid var(--line);
+    }
+    .sidebar-brand{
+      border-bottom:none;
+      margin-bottom:0;
+      padding:0 10px 0 0;
+      border-right:1px solid var(--line);
+    }
+    .brand-sub{display:none;}
+    .sidebar-nav{flex-direction:row;flex:1;padding-left:10px;}
+    .nav-item span{display:none;}
+    .nav-item{padding:9px;justify-content:center;}
+    .sidebar-footer{flex-direction:row;border-top:none;padding-top:0;}
+    .status-pill span:last-child{display:none;}
+  }
+
+
+  .settings-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.6);
+    z-index:100;
+    align-items:flex-start;
+    justify-content:center;
+    padding:60px 20px;
+    overflow-y:auto;
+  }
+  .settings-overlay.open{display:flex;}
+  .settings-panel{
+    background:var(--bg-0);
+    border:1px solid var(--line);
+    border-radius:14px;
+    max-width:560px;
+    width:100%;
+    padding:24px 26px 30px;
+    max-height:calc(100vh - 120px);
+    overflow-y:auto;
+  }
+  .settings-header{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:18px;
+  }
+  .settings-header h2{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:19px;font-weight:600;margin:0;
+  }
+  .settings-close-btn{
+    width:30px;height:30px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--bg-1);
+    color:var(--text-mid);
+    cursor:pointer;
+  }
+  .settings-close-btn:hover{color:var(--text-hi);}
+  .settings-section-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.4px;
+    color:var(--text-dim);
+    margin:20px 0 10px;
+  }
+  .settings-section-label:first-of-type{margin-top:0;}
+
+  .settings-needed-banner{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    background:rgba(255,180,84,0.1);
+    border:1px solid var(--amber);
+    border-radius:10px;
+    padding:12px 16px;
+    font-size:13px;
+    color:var(--text-hi);
+    margin-bottom:24px;
+  }
+  .settings-needed-banner button{
+    background:var(--amber);
+    border:none;
+    color:#1a1400;
+    border-radius:7px;
+    padding:6px 14px;
+    font-size:12.5px;
+    cursor:pointer;
+    font-family:'Inter',sans-serif;
+    flex-shrink:0;
+  }
+  .drive-status-line{
+    font-size:12.5px;
+    color:var(--text-dim);
+    margin-bottom:16px;
+  }
   #projectsView{display:none;}
-  .projects-intro{margin-bottom:28px;}
+  .projects-intro-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:20px;
+    margin-bottom:28px;
+  }
+  .projects-intro{margin-bottom:0;}
+  .new-project-btn{
+    flex-shrink:0;
+    background:var(--violet);
+    color:#fff;
+    border:none;
+    border-radius:9px;
+    padding:11px 18px;
+    font-size:13.5px;
+    font-family:'Inter',sans-serif;
+    font-weight:500;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .new-project-btn:hover{opacity:0.88;}
+  @media (max-width: 640px){
+    .projects-intro-row{flex-direction:column;}
+    .new-project-btn{width:100%;}
+  }
   .projects-intro h1{
     font-family:'Space Grotesk',sans-serif;
     font-size:28px;font-weight:600;margin:0 0 10px;line-height:1.3;
@@ -393,6 +619,24 @@
   .intro{
     margin-bottom:36px;
   }
+  .intro-top-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+  }
+  .export-chat-btn{
+    flex-shrink:0;
+    background:var(--bg-1);
+    border:1px solid var(--line);
+    color:var(--text-mid);
+    border-radius:8px;
+    padding:8px 14px;
+    font-size:12.5px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .export-chat-btn:hover{color:var(--text-hi);border-color:var(--violet);}
   .intro h1{
     font-family:'Space Grotesk',sans-serif;
     font-size:28px;
@@ -466,7 +710,25 @@
     line-height:1.5;
   }
   .apikey-hint a{color:var(--cyan);}
-  .apikey-box.saved{display:none;}
+  .apikey-saved-view{
+    display:none;
+    align-items:center;
+    justify-content:space-between;
+    font-size:13px;
+    color:var(--cyan);
+  }
+  .apikey-box.saved .apikey-input-view{display:none;}
+  .apikey-box.saved .apikey-saved-view{display:flex;}
+  .apikey-edit-btn{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--text-mid);
+    border-radius:7px;
+    padding:5px 12px;
+    font-size:12.5px;
+    cursor:pointer;
+  }
+  .apikey-edit-btn:hover{color:var(--text-hi);border-color:var(--violet);}
 
   .msg{
     display:flex;
@@ -524,6 +786,68 @@
     border-radius:4px;
     font-size:13px;
   }
+  .chat-link{
+    color:var(--cyan);
+    text-decoration:underline;
+    text-underline-offset:2px;
+  }
+  .chat-link:hover{color:var(--violet);}
+  .sources-block{
+    margin-top:10px;
+    padding-top:10px;
+    border-top:1px solid var(--line);
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .sources-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    text-transform:uppercase;
+    color:var(--text-dim);
+    margin-bottom:2px;
+  }
+  .source-link{
+    font-size:12.5px;
+    color:var(--cyan);
+    text-decoration:none;
+  }
+  .source-link:hover{text-decoration:underline;}
+  .speak-btn{
+    margin-top:10px;
+    background:none;
+    border:1px solid var(--line);
+    color:var(--text-dim);
+    border-radius:7px;
+    padding:4px 10px;
+    font-size:11.5px;
+    cursor:pointer;
+  }
+  .speak-btn:hover{color:var(--text-hi);border-color:var(--violet);}
+  .stream-cursor{
+    display:inline-block;
+    width:7px;height:15px;
+    background:var(--violet);
+    margin-left:2px;
+    vertical-align:text-bottom;
+    animation:blink-cursor 0.9s infinite;
+  }
+  @keyframes blink-cursor{
+    0%,49%{opacity:1;}
+    50%,100%{opacity:0;}
+  }
+  .retry-btn{
+    margin-top:10px;
+    margin-left:8px;
+    background:none;
+    border:1px solid #E05C5C;
+    color:#E05C5C;
+    border-radius:7px;
+    padding:4px 10px;
+    font-size:11.5px;
+    cursor:pointer;
+  }
+  .retry-btn:hover{background:rgba(224,92,92,0.12);}
   .bubble pre code{background:none;padding:0;}
 
   .code-card{
@@ -632,6 +956,33 @@
     margin-bottom:0;
   }
   .attach-btn:hover{color:var(--text-hi);border-color:var(--violet);}
+  .attach-btn.recording{
+    background:#E05C5C;
+    border-color:#E05C5C;
+    color:#fff;
+    animation:pulse-mic 1s infinite;
+  }
+  @keyframes pulse-mic{
+    0%,100%{opacity:1;}
+    50%{opacity:0.6;}
+  }
+  .mode-row{
+    display:flex;
+    gap:8px;
+    margin-bottom:8px;
+  }
+  .mode-btn{
+    background:var(--bg-2);
+    border:1px solid var(--line);
+    color:var(--text-mid);
+    border-radius:8px;
+    padding:6px 13px;
+    font-size:12.5px;
+    cursor:pointer;
+    font-family:'Inter',sans-serif;
+  }
+  .mode-btn:hover{color:var(--text-hi);}
+  .mode-btn.active{background:var(--violet-dim);color:var(--violet);border-color:var(--violet);}
   .chat-attachment-preview:empty{display:none;}
   .chat-attachment-preview{margin-bottom:8px;}
   .chat-attach-chip{
@@ -703,99 +1054,124 @@
 </head>
 <body>
 
-<header>
-  <div class="brand">
-    <div class="mark">
-      <svg viewBox="0 0 40 40" fill="none">
-        <circle cx="10" cy="10" r="3.2" fill="#7C6CFF" opacity="0.55"/>
-        <circle cx="30" cy="10" r="3.2" fill="#2FD9C4" opacity="0.55"/>
-        <circle cx="10" cy="30" r="3.2" fill="#FFB454" opacity="0.55"/>
-        <circle cx="30" cy="30" r="3.2" fill="#7C6CFF" opacity="0.55"/>
-        <line x1="10" y1="10" x2="20" y2="20" stroke="#3A3470" stroke-width="1.4"/>
-        <line x1="30" y1="10" x2="20" y2="20" stroke="#3A3470" stroke-width="1.4"/>
-        <line x1="10" y1="30" x2="20" y2="20" stroke="#3A3470" stroke-width="1.4"/>
-        <line x1="30" y1="30" x2="20" y2="20" stroke="#3A3470" stroke-width="1.4"/>
-        <circle cx="20" cy="20" r="5" fill="#7C6CFF"/>
-      </svg>
-    </div>
-    <div>
-      <div class="brand-text">NEXUS-AI</div>
-      <div class="brand-sub">coding &amp; troubleshooting assistant &middot; free tier</div>
-    </div>
-  </div>
-  <nav class="tabs">
-    <button class="tab-btn active" id="tabChatBtn">Chat</button>
-    <button class="tab-btn" id="tabProjectsBtn">Mga Proyekto</button>
-  </nav>
-  <div class="status"><span class="dot"></span>online &middot; walang time limit</div>
-</header>
-
-<main id="thread">
-  <div class="wrap" id="chatView">
-    <div class="intro">
-      <h1>Isang usapan lang, sagot agad.</h1>
-      <p>Ilagay ang error, code, o problema mo sa ibaba. Puwede magtanong nang paulit-ulit, walang bilang ng prompts o oras na limitado dito sa loob ng session mo.</p>
-      <div class="disclosure">
-        <span>&#9432;</span>
-        <span>Pinapagana ng Google Gemini at Groq/Llama (libre), at opsyonal na Claude (bayad) &mdash; magkaibang AI na may magkaibang lakas.</span>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="mark">
+        <svg viewBox="0 0 40 40" fill="none">
+          <circle cx="10" cy="10" r="3.2" fill="#7C6CFF" opacity="0.55"/>
+          <circle cx="30" cy="10" r="3.2" fill="#2FD9C4" opacity="0.55"/>
+          <circle cx="10" cy="30" r="3.2" fill="#FFB454" opacity="0.55"/>
+          <circle cx="30" cy="30" r="3.2" fill="#7C6CFF" opacity="0.55"/>
+          <line x1="10" y1="10" x2="20" y2="20" stroke="#3A3470" stroke-width="1.4"/>
+          <line x1="30" y1="10" x2="20" y2="20" stroke="#3A3470" stroke-width="1.4"/>
+          <line x1="10" y1="30" x2="20" y2="20" stroke="#3A3470" stroke-width="1.4"/>
+          <line x1="30" y1="30" x2="20" y2="20" stroke="#3A3470" stroke-width="1.4"/>
+          <circle cx="20" cy="20" r="5" fill="#7C6CFF"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-text">NEXUS-AI</div>
+        <div class="brand-sub">coding assistant</div>
       </div>
     </div>
 
-    <div class="apikey-box" id="apikeyBox">
-      <div class="apikey-label">Ilagay ang libreng Gemini API key mo para gumana ang chat</div>
-      <div class="apikey-row">
-        <input type="password" id="apikeyInput" placeholder="AIzaSy...">
-        <button class="save-key" id="saveKeyBtn">I-save</button>
-      </div>
-      <div class="apikey-hint">Kunin ang libreng key sa <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> &mdash; naka-store lang ito sa browser mo, hindi ito napupunta sa amin.</div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" id="tabChatBtn">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Chat</span>
+      </button>
+      <button class="nav-item" id="tabProjectsBtn">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span>Mga Proyekto</span>
+      </button>
+    </nav>
+
+    <button class="new-chat-btn" id="newChatBtn">+ Bagong Chat</button>
+    <div class="conversation-list" id="conversationList"></div>
+
+    <div class="sidebar-footer">
+      <button class="nav-item" id="themeToggleBtn">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="themeIcon"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <span id="themeLabel">Light Mode</span>
+      </button>
+      <div class="status-pill"><span class="dot"></span>online &middot; walang time limit</div>
+      <button class="nav-item" id="settingsGearBtn">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Settings</span>
+      </button>
     </div>
+  </aside>
 
-    <div class="apikey-box" id="groqkeyBox">
-      <div class="apikey-label">Opsyonal: ilagay ang libreng Groq API key para makakuha ng pangalawang sagot (Llama model)</div>
-      <div class="apikey-row">
-        <input type="password" id="groqkeyInput" placeholder="gsk_...">
-        <button class="save-key" id="saveGroqKeyBtn">I-save</button>
-      </div>
-      <div class="apikey-hint">Kunin ang libreng key sa <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a> &mdash; magkaibang klase ng AI ito kumpara sa Gemini, kaya magkaiba rin ang lakas nila sa sagot.</div>
-    </div>
-
-    <div class="apikey-box" id="claudekeyBox">
-      <div class="apikey-label">Opsyonal: ilagay ang Claude API key para makakuha ng pangatlong sagot &mdash; <strong>bayad ito, hindi libre</strong> (may $5 trial credit lang)</div>
-      <div class="apikey-row">
-        <input type="password" id="claudekeyInput" placeholder="sk-ant-...">
-        <button class="save-key" id="saveClaudeKeyBtn">I-save</button>
-      </div>
-      <div class="apikey-hint">Kunin sa <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com/settings/keys</a> &mdash; kailangan mong mag-top up ng credits pagkatapos maubos ang $5 trial.</div>
-    </div>
-
-    <div id="messages"></div>
-  </div>
-
-  <div class="wrap" id="projectsView">
-    <div class="projects-intro">
-      <h1>Mga proyekto mo</h1>
-      <p>Itala dito ang mga proyektong nagawa mo &mdash; pangalan, maikling paglalarawan, at kahit code snippet o link. I-sync sa Google Drive mo para makuha mo ito kahit saang device.</p>
-    </div>
-
-    <div class="dashboard" id="projectDashboard"></div>
-
-    <div class="drive-box" id="driveBox">
-      <div id="driveSetup">
-        <div class="apikey-label">Ilagay ang Google Client ID mo (isang beses lang, para sa sign-in)</div>
-        <div class="apikey-row">
-          <input type="text" id="clientIdInput" placeholder="xxxxxxxx.apps.googleusercontent.com">
-          <button class="save-key" id="saveClientIdBtn">I-save</button>
+  <div class="main-col">
+    <main id="thread">
+      <div class="wrap" id="chatView">
+        <div class="intro">
+          <div class="intro-top-row">
+            <div>
+              <h1>Isang usapan lang, sagot agad.</h1>
+              <p>Ilagay ang error, code, o problema mo sa ibaba. Puwede magtanong nang paulit-ulit, walang bilang ng prompts o oras na limitado dito sa loob ng session mo.</p>
+            </div>
+            <button class="export-chat-btn" id="exportChatBtn">&#11015; I-export</button>
+          </div>
+          <div class="disclosure">
+            <span>&#9432;</span>
+            <span>Pinapagana ng Google Gemini at Groq/Llama (libre), at opsyonal na Claude (bayad) &mdash; magkaibang AI na may magkaibang lakas.</span>
+          </div>
         </div>
-        <div class="apikey-hint">Galing sa Google Cloud Console (OAuth Client ID). Tanungin mo ako kung paano kumuha nito.</div>
+
+        <div class="settings-needed-banner" id="settingsNeededBanner" style="display:none;">
+          <span>&#9888; Kailangan mong i-configure muna ang Gemini API key para gumana ang chat.</span>
+          <button id="openSettingsFromBanner">Buksan ang Settings</button>
+        </div>
+
+        <div id="messages"></div>
       </div>
-      <div id="driveSignedOut" style="display:none;">
-        <button class="add-project-btn" id="driveSignInBtn">Mag-sign in gamit Google &amp; i-sync sa Drive</button>
-        <div class="apikey-hint" style="margin-top:10px;">Naka-store muna nang lokal ang mga proyekto mo. Mag-sign in para ma-sync sa Drive at ma-access mo saan mang device.</div>
+
+      <div class="wrap" id="projectsView">
+        <div class="projects-intro-row">
+          <div class="projects-intro">
+            <h1>Mga proyekto mo</h1>
+            <p>Itala dito ang mga proyektong nagawa mo &mdash; pangalan, paglalarawan, code, at progress. I-sync sa Google Drive para makuha mo saang device.</p>
+          </div>
+          <button class="new-project-btn" id="newProjectBtn">+ Bagong Proyekto</button>
+        </div>
+
+        <div class="dashboard" id="projectDashboard"></div>
+
+        <div class="drive-status-line" id="driveStatusLine"></div>
+
+        <div class="project-list" id="projectList"></div>
       </div>
-      <div id="driveSignedIn" style="display:none;">
-        <div class="drive-status"><span class="dot"></span><span id="driveUserLabel">Naka-sync sa Google Drive</span></div>
-        <button class="delete-project" id="driveSignOutBtn">Mag-sign out</button>
+    </main>
+
+    <footer>
+      <div class="composer">
+        <div class="mode-row">
+          <button class="mode-btn active" id="modeChatBtn">&#128172; Chat</button>
+          <button class="mode-btn" id="modeImageBtn">&#127912; Gumawa ng Larawan</button>
+        </div>
+        <div class="chat-attachment-preview" id="chatAttachmentPreview"></div>
+        <div class="input-shell">
+          <button class="attach-btn" id="chatAttachBtn" type="button" aria-label="Mag-attach ng file" title="Mag-attach ng file o larawan">&#128206;</button>
+          <input type="file" id="chatFileInput" accept="image/*,.txt,.md,.js,.jsx,.ts,.tsx,.py,.java,.c,.cpp,.cs,.php,.json,.csv,.html,.css,.sql,.sh,.yml,.yaml" style="display:none;">
+          <button class="attach-btn" id="micBtn" type="button" aria-label="Magsalita" title="Magsalita imbes na mag-type">&#127908;</button>
+          <textarea id="input" rows="1" placeholder="I-type ang code, error, o tanong mo..."></textarea>
+          <button class="send" id="sendBtn" aria-label="Send">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+          </button>
+        </div>
+        <div class="hint">Enter para magpadala &middot; Shift+Enter para bagong linya &middot; &#128206; attach &middot; &#127908; magsalita</div>
       </div>
+    </footer>
+  </div>
+</div>
+
+<div class="settings-overlay" id="projectFormOverlay">
+  <div class="settings-panel">
+    <div class="settings-header">
+      <h2 id="projectFormTitle">Bagong Proyekto</h2>
+      <button class="settings-close-btn" id="projectFormCloseBtn">&#10005;</button>
     </div>
 
     <div class="project-form">
@@ -822,25 +1198,86 @@
       <button class="add-project-btn" id="addProjectBtn">+ Idagdag ang proyekto</button>
       <button class="cancel-edit-btn" id="cancelEditBtn" style="display:none;">Kanselahin ang pag-edit</button>
     </div>
-
-    <div class="project-list" id="projectList"></div>
   </div>
-</main>
+</div>
 
-<footer>
-  <div class="composer">
-    <div class="chat-attachment-preview" id="chatAttachmentPreview"></div>
-    <div class="input-shell">
-      <button class="attach-btn" id="chatAttachBtn" type="button" aria-label="Mag-attach ng file" title="Mag-attach ng file o larawan">&#128206;</button>
-      <input type="file" id="chatFileInput" accept="image/*,.txt,.md,.js,.jsx,.ts,.tsx,.py,.java,.c,.cpp,.cs,.php,.json,.csv,.html,.css,.sql,.sh,.yml,.yaml" style="display:none;">
-      <textarea id="input" rows="1" placeholder="I-type ang code, error, o tanong mo..."></textarea>
-      <button class="send" id="sendBtn" aria-label="Send">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-      </button>
+<div class="settings-overlay" id="settingsOverlay">
+  <div class="settings-panel">
+    <div class="settings-header">
+      <h2>Settings</h2>
+      <button class="settings-close-btn" id="settingsCloseBtn">&#10005;</button>
     </div>
-    <div class="hint">Enter para magpadala &middot; Shift+Enter para bagong linya &middot; &#128206; para mag-attach ng file/larawan</div>
+
+    <div class="settings-section-label">AI Providers</div>
+
+    <div class="apikey-box" id="apikeyBox">
+      <div class="apikey-input-view">
+        <div class="apikey-label">Ilagay ang libreng Gemini API key mo para gumana ang chat</div>
+        <div class="apikey-row">
+          <input type="password" id="apikeyInput" placeholder="AIzaSy...">
+          <button class="save-key" id="saveKeyBtn">I-save</button>
+        </div>
+        <div class="apikey-hint">Kunin ang libreng key sa <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> &mdash; naka-store lang ito sa browser mo, hindi ito napupunta sa amin.</div>
+      </div>
+      <div class="apikey-saved-view">
+        <span>&#10003; Naka-save ang Gemini key</span>
+        <button class="apikey-edit-btn" id="editKeyBtn">Baguhin</button>
+      </div>
+    </div>
+
+    <div class="apikey-box" id="groqkeyBox">
+      <div class="apikey-input-view">
+        <div class="apikey-label">Opsyonal: ilagay ang libreng Groq API key para makakuha ng pangalawang sagot (Llama model)</div>
+        <div class="apikey-row">
+          <input type="password" id="groqkeyInput" placeholder="gsk_...">
+          <button class="save-key" id="saveGroqKeyBtn">I-save</button>
+        </div>
+        <div class="apikey-hint">Kunin ang libreng key sa <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a> &mdash; magkaibang klase ng AI ito kumpara sa Gemini, kaya magkaiba rin ang lakas nila sa sagot.</div>
+      </div>
+      <div class="apikey-saved-view">
+        <span>&#10003; Naka-save ang Groq key</span>
+        <button class="apikey-edit-btn" id="editGroqKeyBtn">Baguhin</button>
+      </div>
+    </div>
+
+    <div class="apikey-box" id="claudekeyBox">
+      <div class="apikey-input-view">
+        <div class="apikey-label">Opsyonal: ilagay ang Claude API key para makakuha ng pangatlong sagot &mdash; <strong>bayad ito, hindi libre</strong> (may $5 trial credit lang)</div>
+        <div class="apikey-row">
+          <input type="password" id="claudekeyInput" placeholder="sk-ant-...">
+          <button class="save-key" id="saveClaudeKeyBtn">I-save</button>
+        </div>
+        <div class="apikey-hint">Kunin sa <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com/settings/keys</a> &mdash; kailangan mong mag-top up ng credits pagkatapos maubos ang $5 trial.</div>
+      </div>
+      <div class="apikey-saved-view">
+        <span>&#10003; Naka-save ang Claude key</span>
+        <button class="apikey-edit-btn" id="editClaudeKeyBtn">Baguhin</button>
+      </div>
+    </div>
+
+    <div class="settings-section-label">Google Drive Sync (mga proyekto &amp; keys)</div>
+    <div id="settingsDriveNote"></div>
+
+    <div class="drive-box" id="driveBox">
+      <div id="driveSetup">
+        <div class="apikey-label">Ilagay ang Google Client ID mo (isang beses lang, para sa sign-in)</div>
+        <div class="apikey-row">
+          <input type="text" id="clientIdInput" placeholder="xxxxxxxx.apps.googleusercontent.com">
+          <button class="save-key" id="saveClientIdBtn">I-save</button>
+        </div>
+        <div class="apikey-hint">Galing sa Google Cloud Console (OAuth Client ID). Tanungin mo ako kung paano kumuha nito.</div>
+      </div>
+      <div id="driveSignedOut" style="display:none;">
+        <button class="add-project-btn" id="driveSignInBtn">Mag-sign in gamit Google &amp; i-sync sa Drive</button>
+        <div class="apikey-hint" style="margin-top:10px;">Naka-store muna nang lokal ang mga proyekto mo. Mag-sign in para ma-sync sa Drive at ma-access mo saan mang device.</div>
+      </div>
+      <div id="driveSignedIn" style="display:none;">
+        <div class="drive-status"><span class="dot"></span><span id="driveUserLabel">Naka-sync sa Google Drive</span></div>
+        <button class="delete-project" id="driveSignOutBtn">Mag-sign out</button>
+      </div>
+    </div>
   </div>
-</footer>
+</div>
 
 <script>
 const messagesEl = document.getElementById('messages');
@@ -883,6 +1320,75 @@ function renderChatAttachmentPreview(){
 }
 
 chatAttachBtn.addEventListener('click', () => chatFileInput.click());
+
+// ---- Voice input (magsalita imbes na mag-type) ----
+const micBtn = document.getElementById('micBtn');
+const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isRecording = false;
+if (SpeechRecognitionAPI) {
+  recognition = new SpeechRecognitionAPI();
+  recognition.lang = 'fil-PH';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  recognition.onresult = (e) => {
+    const transcript = e.results[0][0].transcript;
+    input.value = (input.value ? input.value + ' ' : '') + transcript;
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 200) + 'px';
+  };
+  recognition.onend = () => {
+    isRecording = false;
+    micBtn.classList.remove('recording');
+  };
+  recognition.onerror = () => {
+    isRecording = false;
+    micBtn.classList.remove('recording');
+  };
+}
+micBtn.addEventListener('click', () => {
+  if (!recognition) {
+    alert('Hindi supported ang voice input sa browser na ito. Subukan sa Chrome.');
+    return;
+  }
+  if (isRecording) {
+    recognition.stop();
+    return;
+  }
+  isRecording = true;
+  micBtn.classList.add('recording');
+  recognition.start();
+});
+
+// ---- Voice output (basahin nang malakas ang sagot) ----
+function speakText(text){
+  if (!('speechSynthesis' in window)) {
+    alert('Hindi supported ang voice output sa browser na ito.');
+    return;
+  }
+  const clean = text.replace(/```[\s\S]*?```/g, ' may code doon, tingnan sa screen. ').replace(/`/g, '');
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(clean);
+  utter.lang = 'fil-PH';
+  window.speechSynthesis.speak(utter);
+}
+
+// ---- Mode toggle: Chat vs Gumawa ng Larawan ----
+const modeChatBtn = document.getElementById('modeChatBtn');
+const modeImageBtn = document.getElementById('modeImageBtn');
+let chatMode = 'chat';
+modeChatBtn.addEventListener('click', () => {
+  chatMode = 'chat';
+  modeChatBtn.classList.add('active');
+  modeImageBtn.classList.remove('active');
+  input.placeholder = 'I-type ang code, error, o tanong mo...';
+});
+modeImageBtn.addEventListener('click', () => {
+  chatMode = 'image';
+  modeImageBtn.classList.add('active');
+  modeChatBtn.classList.remove('active');
+  input.placeholder = 'Ilarawan ang larawang gusto mong gawin...';
+});
 
 chatFileInput.addEventListener('change', () => {
   const file = chatFileInput.files && chatFileInput.files[0];
@@ -941,6 +1447,137 @@ let groqHistory = [];
 let claudeHistory = [];
 let busy = false;
 let apiKey = '';
+
+// ---- Multiple conversations (chat history) ----
+const conversationList = document.getElementById('conversationList');
+const newChatBtn = document.getElementById('newChatBtn');
+let conversations = [];
+let currentConversationId = null;
+
+function loadConversations(){
+  try {
+    const raw = localStorage.getItem('nexus_conversations');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) { return []; }
+}
+function saveConversations(){
+  try { localStorage.setItem('nexus_conversations', JSON.stringify(conversations)); } catch (e) {}
+}
+function getCurrentConversation(){
+  return conversations.find(c => c.id === currentConversationId);
+}
+function logMessageToConversation(role, text, label){
+  const conv = getCurrentConversation();
+  if (!conv) return;
+  conv.messages.push({ role, text, label: label || null });
+  if (!conv.title && role === 'user' && text) {
+    conv.title = text.slice(0, 42) + (text.length > 42 ? '\u2026' : '');
+  }
+  saveConversations();
+  renderConversationList();
+}
+function createNewConversation(){
+  const conv = {
+    id: Date.now() + '-' + Math.random().toString(36).slice(2),
+    title: '',
+    createdAt: Date.now(),
+    messages: [],
+    geminiHistory: [],
+    groqHistory: [],
+    claudeHistory: []
+  };
+  conversations.unshift(conv);
+  saveConversations();
+  currentConversationId = conv.id;
+  geminiHistory = conv.geminiHistory;
+  groqHistory = conv.groqHistory;
+  claudeHistory = conv.claudeHistory;
+  messagesEl.innerHTML = '';
+  renderConversationList();
+}
+function switchConversation(id){
+  const conv = conversations.find(c => c.id === id);
+  if (!conv) return;
+  currentConversationId = id;
+  geminiHistory = conv.geminiHistory;
+  groqHistory = conv.groqHistory;
+  claudeHistory = conv.claudeHistory;
+  messagesEl.innerHTML = '';
+  conv.messages.forEach(m => addMessage(m.role, m.text, m.label, null, null, false));
+  renderConversationList();
+  switchToChat();
+}
+function deleteConversation(id){
+  conversations = conversations.filter(c => c.id !== id);
+  saveConversations();
+  if (currentConversationId === id) {
+    if (conversations.length) {
+      switchConversation(conversations[0].id);
+    } else {
+      createNewConversation();
+    }
+  } else {
+    renderConversationList();
+  }
+}
+function renderConversationList(){
+  conversationList.innerHTML = '';
+  conversations.forEach(conv => {
+    const item = document.createElement('div');
+    item.className = 'conversation-item' + (conv.id === currentConversationId ? ' active' : '');
+    const title = document.createElement('span');
+    title.className = 'conv-title';
+    title.textContent = conv.title || 'Bagong usapan';
+    const delBtn = document.createElement('button');
+    delBtn.className = 'conv-delete';
+    delBtn.textContent = '\u2715';
+    delBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteConversation(conv.id);
+    });
+    item.appendChild(title);
+    item.appendChild(delBtn);
+    item.addEventListener('click', () => switchConversation(conv.id));
+    conversationList.appendChild(item);
+  });
+}
+newChatBtn.addEventListener('click', () => {
+  switchToChat();
+  createNewConversation();
+});
+
+const exportChatBtn = document.getElementById('exportChatBtn');
+exportChatBtn.addEventListener('click', () => {
+  const conv = getCurrentConversation();
+  if (!conv || !conv.messages.length) {
+    alert('Wala pang laman ang usapang ito para i-export.');
+    return;
+  }
+  const labelName = { GM: 'Gemini', GR: 'Llama (Groq)', CL: 'Claude' };
+  let out = '# ' + (conv.title || 'Usapan sa NEXUS-AI') + '\n';
+  out += new Date(conv.createdAt).toLocaleString('fil-PH') + '\n\n---\n\n';
+  conv.messages.forEach(m => {
+    const who = m.role === 'user' ? 'Ikaw' : (labelName[m.label] || 'AI');
+    out += '**' + who + ':**\n' + m.text + '\n\n';
+  });
+  const blob = new Blob([out], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'nexus-ai-usapan-' + Date.now() + '.md';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+conversations = loadConversations();
+if (conversations.length === 0) {
+  createNewConversation();
+} else {
+  switchConversation(conversations[0].id);
+}
+
 let groqKey = '';
 let claudeKey = '';
 
@@ -968,6 +1605,78 @@ try {
   }
 } catch (e) {}
 
+// ---- Settings modal ----
+const settingsOverlay = document.getElementById('settingsOverlay');
+const settingsGearBtn = document.getElementById('settingsGearBtn');
+const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+const settingsNeededBanner = document.getElementById('settingsNeededBanner');
+const openSettingsFromBanner = document.getElementById('openSettingsFromBanner');
+
+function openSettingsModal(){
+  settingsOverlay.classList.add('open');
+}
+function closeSettingsModal(){
+  settingsOverlay.classList.remove('open');
+}
+function updateSettingsNeededBanner(){
+  settingsNeededBanner.style.display = apiKey ? 'none' : 'flex';
+}
+
+settingsGearBtn.addEventListener('click', openSettingsModal);
+settingsCloseBtn.addEventListener('click', closeSettingsModal);
+openSettingsFromBanner.addEventListener('click', openSettingsModal);
+settingsOverlay.addEventListener('click', (e) => {
+  if (e.target === settingsOverlay) closeSettingsModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (settingsOverlay.classList.contains('open')) closeSettingsModal();
+  if (projectFormOverlay.classList.contains('open')) closeProjectFormModal();
+});
+
+updateSettingsNeededBanner();
+
+// ---- Dark / Light mode toggle ----
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+const themeLabel = document.getElementById('themeLabel');
+const themeIcon = document.getElementById('themeIcon');
+
+function applyTheme(theme){
+  document.body.setAttribute('data-theme', theme);
+  themeLabel.textContent = theme === 'light' ? 'Dark Mode' : 'Light Mode';
+  themeIcon.innerHTML = theme === 'light'
+    ? '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
+    : '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+}
+
+let currentTheme = 'dark';
+try { currentTheme = localStorage.getItem('theme') || 'dark'; } catch (e) {}
+applyTheme(currentTheme);
+
+themeToggleBtn.addEventListener('click', () => {
+  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  applyTheme(currentTheme);
+  try { localStorage.setItem('theme', currentTheme); } catch (e) {}
+});
+
+// ---- Keyboard shortcuts ----
+document.addEventListener('keydown', (e) => {
+  const ctrlOrCmd = e.ctrlKey || e.metaKey;
+  if (ctrlOrCmd && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    switchToChat();
+    createNewConversation();
+  } else if (ctrlOrCmd && e.key === ',') {
+    e.preventDefault();
+    openSettingsModal();
+  } else if (ctrlOrCmd && e.key === '/') {
+    e.preventDefault();
+    switchToChat();
+    input.focus();
+  }
+});
+
+
 saveKeyBtn.addEventListener('click', () => {
   const val = apikeyInput.value.trim();
   if (!val) return;
@@ -975,6 +1684,7 @@ saveKeyBtn.addEventListener('click', () => {
   try { localStorage.setItem('gemini_api_key', val); } catch (e) {}
   apikeyBox.classList.add('saved');
   pushSettingsToDrive();
+  updateSettingsNeededBanner();
   input.focus();
 });
 
@@ -996,6 +1706,24 @@ saveClaudeKeyBtn.addEventListener('click', () => {
   claudekeyBox.classList.add('saved');
   pushSettingsToDrive();
   input.focus();
+});
+
+document.getElementById('editKeyBtn').addEventListener('click', () => {
+  apikeyBox.classList.remove('saved');
+  apikeyInput.value = '';
+  apikeyInput.focus();
+  apiKey = '';
+  updateSettingsNeededBanner();
+});
+document.getElementById('editGroqKeyBtn').addEventListener('click', () => {
+  groqkeyBox.classList.remove('saved');
+  groqkeyInput.value = '';
+  groqkeyInput.focus();
+});
+document.getElementById('editClaudeKeyBtn').addEventListener('click', () => {
+  claudekeyBox.classList.remove('saved');
+  claudekeyInput.value = '';
+  claudekeyInput.focus();
 });
 
 input.addEventListener('input', () => {
@@ -1025,6 +1753,7 @@ const LANG_EXT = {
 function renderTextSegment(seg){
   let escaped = escapeHtml(seg);
   escaped = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
+  escaped = escaped.replace(/(https?:\/\/[^\s<]+[^\s<.,)\]"'])/g, '<a href="$1" target="_blank" rel="noopener" class="chat-link">$1</a>');
   return escaped.split(/\n{2,}/).filter(p => p.trim()).map(p => '<p>' + p.replace(/\n/g,'<br>') + '</p>').join('');
 }
 
@@ -1083,12 +1812,120 @@ function buildCodeCard(lang, code){
   return wrap;
 }
 
+function parsePptxSlides(code){
+  const lines = code.split('\n');
+  const slides = [];
+  let current = null;
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('# ')) {
+      current = { title: trimmed.slice(2).trim(), bullets: [] };
+      slides.push(current);
+    } else if (trimmed.startsWith('- ') && current) {
+      current.bullets.push(trimmed.slice(2).trim());
+    } else if (trimmed && current) {
+      current.bullets.push(trimmed);
+    }
+  });
+  return slides;
+}
+
+function buildPptxCard(code){
+  const slides = parsePptxSlides(code);
+  const wrap = document.createElement('div');
+  wrap.className = 'code-card';
+  const top = document.createElement('div');
+  top.className = 'code-card-top';
+  top.innerHTML = '<span class="code-card-lang">&#128202; PowerPoint</span><span class="code-card-lines">' + slides.length + ' slide' + (slides.length !== 1 ? 's' : '') + '</span>';
+  wrap.appendChild(top);
+  const actions = document.createElement('div');
+  actions.className = 'code-card-actions';
+  const downloadBtn = document.createElement('button');
+  downloadBtn.className = 'code-download-btn';
+  downloadBtn.textContent = '\u2B07 I-download bilang .pptx';
+  downloadBtn.addEventListener('click', () => {
+    try {
+      const pptx = new PptxGenJS();
+      slides.forEach(s => {
+        const slide = pptx.addSlide();
+        slide.addText(s.title, { x: 0.5, y: 0.4, w: 9, h: 1, fontSize: 28, bold: true, color: '333333' });
+        if (s.bullets.length) {
+          const bulletText = s.bullets.map(b => ({ text: b, options: { bullet: true, breakLine: true } }));
+          slide.addText(bulletText, { x: 0.7, y: 1.6, w: 8.5, h: 4.5, fontSize: 18, color: '444444' });
+        }
+      });
+      pptx.writeFile({ fileName: 'presentation-' + Date.now() + '.pptx' });
+    } catch (e) {
+      alert('May error sa paggawa ng PowerPoint file. Subukan ulit.');
+      console.error(e);
+    }
+  });
+  actions.appendChild(downloadBtn);
+  wrap.appendChild(actions);
+  return wrap;
+}
+
+function parseDocxHtml(code){
+  const lines = code.split('\n');
+  let html = '';
+  let inList = false;
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('## ')) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += '<h2>' + escapeHtml(trimmed.slice(3)) + '</h2>';
+    } else if (trimmed.startsWith('# ')) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += '<h1>' + escapeHtml(trimmed.slice(2)) + '</h1>';
+    } else if (trimmed.startsWith('- ')) {
+      if (!inList) { html += '<ul>'; inList = true; }
+      html += '<li>' + escapeHtml(trimmed.slice(2)) + '</li>';
+    } else if (trimmed) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += '<p>' + escapeHtml(trimmed) + '</p>';
+    }
+  });
+  if (inList) html += '</ul>';
+  return html;
+}
+
+function buildDocxCard(code){
+  const paraCount = code.split('\n').filter(l => l.trim()).length;
+  const wrap = document.createElement('div');
+  wrap.className = 'code-card';
+  const top = document.createElement('div');
+  top.className = 'code-card-top';
+  top.innerHTML = '<span class="code-card-lang">&#128196; Word Document</span><span class="code-card-lines">' + paraCount + ' na linya</span>';
+  wrap.appendChild(top);
+  const actions = document.createElement('div');
+  actions.className = 'code-card-actions';
+  const downloadBtn = document.createElement('button');
+  downloadBtn.className = 'code-download-btn';
+  downloadBtn.textContent = '\u2B07 I-download bilang Word';
+  downloadBtn.addEventListener('click', () => {
+    const bodyHtml = parseDocxHtml(code);
+    const htmlContent = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Dokumento</title></head><body>" + bodyHtml + "</body></html>";
+    const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'dokumento-' + Date.now() + '.doc';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+  actions.appendChild(downloadBtn);
+  wrap.appendChild(actions);
+  return wrap;
+}
+
 // Kung maikli lang ang code (5 linya o mas mababa), sapat nang ipakita
 // nang diretso sa loob ng chat kaysa gawing card.
 const CODE_CARD_LINE_THRESHOLD = 5;
 
 function renderMessageInto(container, text){
-  const regex = /```([a-zA-Z0-9+#]*)\n([\s\S]*?)```/g;
+  const regex = /```([a-zA-Z0-9+#-]*)\n([\s\S]*?)```/g;
   let lastIndex = 0;
   let match;
   let found = false;
@@ -1102,15 +1939,21 @@ function renderMessageInto(container, text){
     }
     const lang = match[1];
     const code = match[2];
-    const lineCount = code.replace(/\n$/, '').split('\n').length;
-    if (lineCount <= CODE_CARD_LINE_THRESHOLD) {
-      const pre = document.createElement('pre');
-      const codeEl = document.createElement('code');
-      codeEl.textContent = code.replace(/\n$/, '');
-      pre.appendChild(codeEl);
-      container.appendChild(pre);
+    if (lang === 'pptx-slides') {
+      container.appendChild(buildPptxCard(code));
+    } else if (lang === 'docx-content') {
+      container.appendChild(buildDocxCard(code));
     } else {
-      container.appendChild(buildCodeCard(lang, code));
+      const lineCount = code.replace(/\n$/, '').split('\n').length;
+      if (lineCount <= CODE_CARD_LINE_THRESHOLD) {
+        const pre = document.createElement('pre');
+        const codeEl = document.createElement('code');
+        codeEl.textContent = code.replace(/\n$/, '');
+        pre.appendChild(codeEl);
+        container.appendChild(pre);
+      } else {
+        container.appendChild(buildCodeCard(lang, code));
+      }
     }
     lastIndex = regex.lastIndex;
   }
@@ -1125,7 +1968,7 @@ function renderMessageInto(container, text){
   }
 }
 
-function addMessage(role, text, label, attachment){
+function addMessage(role, text, label, attachment, groundingChunks, persist = true){
   const row = document.createElement('div');
   row.className = 'msg ' + (role === 'user' ? 'user' : 'ai');
   const avatar = document.createElement('div');
@@ -1157,10 +2000,41 @@ function addMessage(role, text, label, attachment){
   const inner = document.createElement('div');
   renderMessageInto(inner, text);
   bubble.appendChild(inner);
+
+  if (groundingChunks && groundingChunks.length) {
+    const sourcesWrap = document.createElement('div');
+    sourcesWrap.className = 'sources-block';
+    const sourcesLabel = document.createElement('div');
+    sourcesLabel.className = 'sources-label';
+    sourcesLabel.textContent = '\u{1F50D} Mga pinagmulan mula sa Web Search';
+    sourcesWrap.appendChild(sourcesLabel);
+    groundingChunks.forEach(chunk => {
+      if (chunk.web && chunk.web.uri) {
+        const a = document.createElement('a');
+        a.href = chunk.web.uri;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.className = 'source-link';
+        a.textContent = chunk.web.title || chunk.web.uri;
+        sourcesWrap.appendChild(a);
+      }
+    });
+    bubble.appendChild(sourcesWrap);
+  }
+
+  if (role !== 'user') {
+    const speakBtn = document.createElement('button');
+    speakBtn.className = 'speak-btn';
+    speakBtn.textContent = '\u{1F50A} Basahin';
+    speakBtn.addEventListener('click', () => speakText(text));
+    bubble.appendChild(speakBtn);
+  }
+
   row.appendChild(avatar);
   row.appendChild(bubble);
   messagesEl.appendChild(row);
   document.getElementById('thread').scrollTop = document.getElementById('thread').scrollHeight;
+  if (persist) logMessageToConversation(role, text, label);
   return bubble;
 }
 
@@ -1237,6 +2111,12 @@ function refreshDriveUI(){
     driveSetup.style.display = '';
     driveSignedOut.style.display = 'none';
     driveSignedIn.style.display = 'none';
+  }
+  const statusLine = document.getElementById('driveStatusLine');
+  if (statusLine) {
+    statusLine.textContent = accessToken
+      ? '\u2713 Naka-sync sa Google Drive'
+      : '\u26A0 Naka-store lang lokal sa browser mo \u2014 mag-sign in sa Settings (\u2699) para ma-sync sa Drive.';
   }
 }
 
@@ -1344,7 +2224,7 @@ async function syncSettingsFromDrive(){
     try { localStorage.setItem('drive_settings_file_id', fileId); } catch (e) {}
     const remote = await readDriveFile(fileId);
     if (remote && typeof remote === 'object') {
-      if (remote.gemini) { apiKey = remote.gemini; try { localStorage.setItem('gemini_api_key', remote.gemini); } catch (e) {} apikeyBox.classList.add('saved'); }
+      if (remote.gemini) { apiKey = remote.gemini; try { localStorage.setItem('gemini_api_key', remote.gemini); } catch (e) {} apikeyBox.classList.add('saved'); updateSettingsNeededBanner(); }
       if (remote.groq) { groqKey = remote.groq; try { localStorage.setItem('groq_api_key', remote.groq); } catch (e) {} groqkeyBox.classList.add('saved'); }
       if (remote.claude) { claudeKey = remote.claude; try { localStorage.setItem('claude_api_key', remote.claude); } catch (e) {} claudekeyBox.classList.add('saved'); }
     }
@@ -1441,6 +2321,18 @@ function saveProjects(list){
 
 const STATUS_LABEL = { ongoing: 'Ginagawa pa', paused: 'Naka-pause', done: 'Tapos na' };
 
+const projectFormOverlay = document.getElementById('projectFormOverlay');
+const projectFormTitle = document.getElementById('projectFormTitle');
+const newProjectBtn = document.getElementById('newProjectBtn');
+const projectFormCloseBtn = document.getElementById('projectFormCloseBtn');
+
+function openProjectFormModal(){
+  projectFormOverlay.classList.add('open');
+}
+function closeProjectFormModal(){
+  projectFormOverlay.classList.remove('open');
+}
+
 function resetProjectForm(){
   editingId = null;
   projTitle.value = '';
@@ -1455,7 +2347,18 @@ function resetProjectForm(){
   renderStagedFiles();
   addProjectBtn.textContent = '+ Idagdag ang proyekto';
   cancelEditBtn.style.display = 'none';
+  projectFormTitle.textContent = 'Bagong Proyekto';
 }
+
+newProjectBtn.addEventListener('click', () => {
+  resetProjectForm();
+  openProjectFormModal();
+  projTitle.focus();
+});
+projectFormCloseBtn.addEventListener('click', closeProjectFormModal);
+projectFormOverlay.addEventListener('click', (e) => {
+  if (e.target === projectFormOverlay) closeProjectFormModal();
+});
 
 const projectDashboard = document.getElementById('projectDashboard');
 
@@ -1590,13 +2493,17 @@ function renderProjects(){
       renderStagedFiles();
       addProjectBtn.textContent = 'I-update ang proyekto';
       cancelEditBtn.style.display = '';
-      projTitle.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      projectFormTitle.textContent = 'I-edit ang Proyekto';
+      openProjectFormModal();
       projTitle.focus();
     });
   });
 }
 
-cancelEditBtn.addEventListener('click', resetProjectForm);
+cancelEditBtn.addEventListener('click', () => {
+  resetProjectForm();
+  closeProjectFormModal();
+});
 
 addProjectBtn.addEventListener('click', () => {
   const title = projTitle.value.trim();
@@ -1639,6 +2546,7 @@ addProjectBtn.addEventListener('click', () => {
   saveProjects(list);
   resetProjectForm();
   renderProjects();
+  closeProjectFormModal();
 });
 
 refreshDriveUI();
@@ -1673,7 +2581,10 @@ function attemptSilentSignIn(triesLeft = 20){
 }
 attemptSilentSignIn();
 
-const SYSTEM_INSTRUCTION = "Ikaw ay isang coding at troubleshooting assistant. Maging malinaw, tapat, at praktikal. Gumamit ng code blocks (```) kung kailangan. Sagot sa parehong wika ng tanong (Filipino o English).";
+const SYSTEM_INSTRUCTION = "Ikaw ay isang coding at troubleshooting assistant. Maging malinaw, tapat, at praktikal. Gumamit ng code blocks (```) kung kailangan. Sagot sa parehong wika ng tanong (Filipino o English). " +
+  "Kung hihilingin sa iyong gumawa ng PowerPoint o presentation, ilagay ang laman sa loob ng isang code block gamit ang wikang 'pptx-slides', sa format na: bawat slide ay nagsisimula sa linyang '# Pamagat ng Slide', sinusundan ng mga bullet points gamit ang '- '. Halimbawa: isang ```pptx-slides code block na may # Panimula, - Punto 1, - Punto 2, tapos bagong slide na # Ikalawang Slide, - Punto A. " +
+  "Kung hihilingin sa iyong gumawa ng Word document o report, ilagay ang laman sa loob ng code block gamit ang wikang 'docx-content', gamit ang markdown-style na # Heading, ## Subheading, mga regular na paragraph, at - para sa listahan. " +
+  "Para sa iba pang task na hindi mo talaga kayang gawin nang direkta (hal. video, audio, o mas advanced na disenyo), huwag magpanggap na nagawa mo ito — magbigay ng content na magagamit, tapos irekomenda ang tamang specialized na tool kasama ang buong URL nito (hal. https://notebooklm.google.com para sa audio overview, https://gamma.app para sa mas advanced na presentations, https://canva.com para sa disenyo) para ma-click ito nang direkta.";
 
 function attachmentToTextPrefix(attachment){
   if (attachment && attachment.kind === 'text') {
@@ -1682,9 +2593,79 @@ function attachmentToTextPrefix(attachment){
   return '';
 }
 
+async function readSSE(response, onEvent){
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('data:')) continue;
+      const jsonStr = trimmed.slice(5).trim();
+      if (!jsonStr || jsonStr === '[DONE]') continue;
+      try { onEvent(JSON.parse(jsonStr)); } catch (e) { /* huwag ihinto ang stream sa isang sirang chunk */ }
+    }
+  }
+}
+
+function createStreamingBubble(label){
+  const row = document.createElement('div');
+  row.className = 'msg ai';
+  const avatar = document.createElement('div');
+  avatar.className = 'avatar';
+  avatar.textContent = label;
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  const tag = document.createElement('div');
+  tag.className = 'source-tag';
+  tag.textContent = label === 'GM' ? 'Gemini (Google)' : label === 'GR' ? 'Llama (Groq)' : 'Claude (Anthropic)';
+  bubble.appendChild(tag);
+  const inner = document.createElement('div');
+  const cursor = document.createElement('span');
+  cursor.className = 'stream-cursor';
+  inner.appendChild(cursor);
+  bubble.appendChild(inner);
+  row.appendChild(avatar);
+  row.appendChild(bubble);
+  messagesEl.appendChild(row);
+  document.getElementById('thread').scrollTop = document.getElementById('thread').scrollHeight;
+  return {
+    row, bubble,
+    updateText(text){
+      inner.innerHTML = '';
+      renderMessageInto(inner, text);
+      const c = document.createElement('span');
+      c.className = 'stream-cursor';
+      inner.appendChild(c);
+      document.getElementById('thread').scrollTop = document.getElementById('thread').scrollHeight;
+    },
+    finalize(){
+      const c = inner.querySelector('.stream-cursor');
+      if (c) c.remove();
+    }
+  };
+}
+
+function addErrorWithRetry(label, message, retryFn){
+  const bubble = addMessage('ai', message, label);
+  const retryBtn = document.createElement('button');
+  retryBtn.className = 'retry-btn';
+  retryBtn.textContent = '\u{1F504} Ulitin';
+  retryBtn.addEventListener('click', () => {
+    bubble.closest('.msg').remove();
+    retryFn();
+  });
+  bubble.appendChild(retryBtn);
+}
+
 async function askGemini(text, attachment){
   const model = 'gemini-3.6-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
   const parts = [];
   if (attachment && attachment.kind === 'image') {
     parts.push({ text: text || 'Ipaliwanag o tulungan ako tungkol sa larawang ito.' });
@@ -1694,30 +2675,44 @@ async function askGemini(text, attachment){
   }
   geminiHistory.push({ role: 'user', parts });
   addThinking('thinkingGM', 'GM');
+  let fullText = '';
+  let groundingChunks = null;
+  let streamBubble = null;
   try {
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: geminiHistory,
-        systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] }
+        systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+        tools: [{ google_search: {} }]
       })
     });
-    const data = await response.json();
-    removeThinking('thinkingGM');
-    if (data.error) {
-      addMessage('ai', 'Error: ' + (data.error.message || 'May isyu sa Gemini key mo.'), 'GM');
-      geminiHistory.pop();
-      return;
+    if (!response.ok) {
+      const errData = await response.json().catch(() => null);
+      throw new Error((errData && errData.error && errData.error.message) || ('HTTP ' + response.status));
     }
-    const candidate = (data.candidates || [])[0];
-    const rParts = candidate && candidate.content && candidate.content.parts ? candidate.content.parts : [];
-    const reply = rParts.map(p => p.text || '').join('\n').trim() || 'Walang naibalik na sagot.';
-    addMessage('ai', reply, 'GM');
+    removeThinking('thinkingGM');
+    streamBubble = createStreamingBubble('GM');
+    await readSSE(response, (obj) => {
+      const candidate = (obj.candidates || [])[0];
+      const rParts = candidate && candidate.content && candidate.content.parts ? candidate.content.parts : [];
+      rParts.forEach(p => { if (p.text) fullText += p.text; });
+      if (candidate && candidate.groundingMetadata && candidate.groundingMetadata.groundingChunks) {
+        groundingChunks = candidate.groundingMetadata.groundingChunks;
+      }
+      streamBubble.updateText(fullText);
+    });
+    streamBubble.finalize();
+    const reply = fullText.trim() || 'Walang naibalik na sagot.';
+    streamBubble.row.remove();
+    addMessage('ai', reply, 'GM', null, groundingChunks);
     geminiHistory.push({ role: 'model', parts: [{ text: reply }] });
   } catch (err) {
     removeThinking('thinkingGM');
-    addMessage('ai', 'May error sa koneksyon sa Gemini.', 'GM');
+    if (streamBubble) streamBubble.row.remove();
+    geminiHistory.pop();
+    addErrorWithRetry('GM', 'Error sa Gemini: ' + (err.message || 'may isyu sa koneksyon o key.'), () => askGemini(text, attachment));
     console.error(err);
   }
 }
@@ -1731,6 +2726,8 @@ async function askGroq(text, attachment){
   }
   groqHistory.push({ role: 'user', content });
   addThinking('thinkingGR', 'GR');
+  let fullText = '';
+  let streamBubble = null;
   try {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -1740,22 +2737,33 @@ async function askGroq(text, attachment){
       },
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
+        stream: true,
         messages: [{ role: "system", content: SYSTEM_INSTRUCTION }, ...groqHistory]
       })
     });
-    const data = await response.json();
-    removeThinking('thinkingGR');
-    if (data.error) {
-      addMessage('ai', 'Error: ' + (data.error.message || 'May isyu sa Groq key mo.'), 'GR');
-      groqHistory.pop();
-      return;
+    if (!response.ok) {
+      const errData = await response.json().catch(() => null);
+      throw new Error((errData && errData.error && errData.error.message) || ('HTTP ' + response.status));
     }
-    const reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || 'Walang naibalik na sagot.';
+    removeThinking('thinkingGR');
+    streamBubble = createStreamingBubble('GR');
+    await readSSE(response, (obj) => {
+      const delta = obj.choices && obj.choices[0] && obj.choices[0].delta;
+      if (delta && delta.content) {
+        fullText += delta.content;
+        streamBubble.updateText(fullText);
+      }
+    });
+    streamBubble.finalize();
+    const reply = fullText.trim() || 'Walang naibalik na sagot.';
+    streamBubble.row.remove();
     addMessage('ai', reply, 'GR');
     groqHistory.push({ role: 'assistant', content: reply });
   } catch (err) {
     removeThinking('thinkingGR');
-    addMessage('ai', 'May error sa koneksyon sa Groq.', 'GR');
+    if (streamBubble) streamBubble.row.remove();
+    groqHistory.pop();
+    addErrorWithRetry('GR', 'Error sa Groq: ' + (err.message || 'may isyu sa koneksyon o key.'), () => askGroq(text, attachment));
     console.error(err);
   }
 }
@@ -1772,6 +2780,8 @@ async function askClaude(text, attachment){
   }
   claudeHistory.push({ role: 'user', content });
   addThinking('thinkingCL', 'CL');
+  let fullText = '';
+  let streamBubble = null;
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -1785,24 +2795,111 @@ async function askClaude(text, attachment){
         model: "claude-sonnet-5",
         max_tokens: 1024,
         system: SYSTEM_INSTRUCTION,
-        messages: claudeHistory
+        messages: claudeHistory,
+        stream: true
       })
     });
-    const data = await response.json();
-    removeThinking('thinkingCL');
-    if (data.error) {
-      addMessage('ai', 'Error: ' + (data.error.message || 'May isyu sa Claude key mo.'), 'CL');
-      claudeHistory.pop();
-      return;
+    if (!response.ok) {
+      const errData = await response.json().catch(() => null);
+      throw new Error((errData && errData.error && errData.error.message) || ('HTTP ' + response.status));
     }
-    const reply = (data.content || []).map(b => b.text || '').join('\n').trim() || 'Walang naibalik na sagot.';
+    removeThinking('thinkingCL');
+    streamBubble = createStreamingBubble('CL');
+    await readSSE(response, (obj) => {
+      if (obj.type === 'content_block_delta' && obj.delta && obj.delta.type === 'text_delta') {
+        fullText += obj.delta.text;
+        streamBubble.updateText(fullText);
+      }
+    });
+    streamBubble.finalize();
+    const reply = fullText.trim() || 'Walang naibalik na sagot.';
+    streamBubble.row.remove();
     addMessage('ai', reply, 'CL');
     claudeHistory.push({ role: 'assistant', content: reply });
   } catch (err) {
     removeThinking('thinkingCL');
-    addMessage('ai', 'May error sa koneksyon sa Claude.', 'CL');
+    if (streamBubble) streamBubble.row.remove();
+    claudeHistory.pop();
+    addErrorWithRetry('CL', 'Error sa Claude: ' + (err.message || 'may isyu sa koneksyon o key.'), () => askClaude(text, attachment));
     console.error(err);
   }
+}
+
+async function askGeminiImage(prompt){
+  const model = 'gemini-2.5-flash-image';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  addThinking('thinkingGM', 'GM');
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ["TEXT", "IMAGE"] }
+      })
+    });
+    const data = await response.json();
+    removeThinking('thinkingGM');
+    if (data.error) {
+      addMessage('ai', 'Error: ' + (data.error.message || 'May isyu sa Gemini key mo o image generation.'), 'GM');
+      return;
+    }
+    const candidate = (data.candidates || [])[0];
+    const rParts = candidate && candidate.content && candidate.content.parts ? candidate.content.parts : [];
+    const imagePart = rParts.find(p => p.inlineData);
+    const textPart = rParts.find(p => p.text);
+    if (imagePart) {
+      addImageMessage(imagePart.inlineData.mimeType, imagePart.inlineData.data, textPart ? textPart.text : '');
+    } else {
+      addMessage('ai', (textPart && textPart.text) || 'Walang nabuong larawan. Subukan ulit gamit ibang description.', 'GM');
+    }
+  } catch (err) {
+    removeThinking('thinkingGM');
+    addMessage('ai', 'May error sa koneksyon sa Gemini image generation.', 'GM');
+    console.error(err);
+  }
+}
+
+function addImageMessage(mimeType, base64Data, caption){
+  const row = document.createElement('div');
+  row.className = 'msg ai';
+  const avatar = document.createElement('div');
+  avatar.className = 'avatar';
+  avatar.textContent = 'GM';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  const tag = document.createElement('div');
+  tag.className = 'source-tag';
+  tag.textContent = 'Gemini (Google) \u2014 Image';
+  bubble.appendChild(tag);
+  if (caption) {
+    const cap = document.createElement('div');
+    cap.innerHTML = renderTextSegment(caption);
+    bubble.appendChild(cap);
+  }
+  const dataUrl = 'data:' + mimeType + ';base64,' + base64Data;
+  const img = document.createElement('img');
+  img.src = dataUrl;
+  img.style.cssText = 'max-width:100%;border-radius:10px;border:1px solid var(--line);display:block;margin-top:8px;';
+  bubble.appendChild(img);
+  const downloadBtn = document.createElement('button');
+  downloadBtn.className = 'code-download-btn';
+  downloadBtn.style.marginTop = '10px';
+  downloadBtn.textContent = '\u2B07 I-download ang larawan';
+  downloadBtn.addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = 'nexus-ai-' + Date.now() + '.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  });
+  bubble.appendChild(downloadBtn);
+  row.appendChild(avatar);
+  row.appendChild(bubble);
+  messagesEl.appendChild(row);
+  document.getElementById('thread').scrollTop = document.getElementById('thread').scrollHeight;
+  logMessageToConversation('ai', (caption ? caption + '\n\n' : '') + '[Larawang nabuo \u2014 hindi na-save ang larawan mismo sa history, i-download ito kung gusto mong itago]', 'GM');
 }
 
 async function send(){
@@ -1823,6 +2920,18 @@ async function send(){
   input.style.height = 'auto';
   pendingAttachment = null;
   renderChatAttachmentPreview();
+
+  if (chatMode === 'image') {
+    addMessage('user', text, null, attachment);
+    try {
+      await askGeminiImage(text);
+    } finally {
+      busy = false;
+      sendBtn.disabled = false;
+      input.focus();
+    }
+    return;
+  }
 
   addMessage('user', text, null, attachment);
 
@@ -1850,13 +2959,10 @@ function cleanContinueUrlParam(){
 function showContinueSignInPrompt(){
   if (!pendingContinueId) return;
   switchToProjects();
-  let banner = document.getElementById('continueSignInBanner');
-  if (!banner) {
-    banner = document.createElement('div');
-    banner.id = 'continueSignInBanner';
-    banner.style.cssText = 'background:var(--violet-dim);border:1px solid var(--violet);color:var(--text-hi);border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:13.5px;';
-    banner.textContent = 'May proyekto kang gustong ituloy dito. Mag-sign in muna gamit Google sa ibaba para makuha ito.';
-    projectDashboard.parentNode.insertBefore(banner, projectDashboard);
+  openSettingsModal();
+  const note = document.getElementById('settingsDriveNote');
+  if (note) {
+    note.innerHTML = '<div style="background:var(--violet-dim);border:1px solid var(--violet);color:var(--text-hi);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;">May proyekto kang gustong ituloy. Mag-sign in muna gamit Google sa ibaba para makuha ito.</div>';
   }
 }
 
@@ -1865,8 +2971,9 @@ function tryCompleteContinue(){
   const proj = loadProjects().find(p => String(p.id) === String(pendingContinueId));
   if (!proj) return;
 
-  const banner = document.getElementById('continueSignInBanner');
-  if (banner) banner.remove();
+  const note = document.getElementById('settingsDriveNote');
+  if (note) note.innerHTML = '';
+  closeSettingsModal();
 
   let msg = 'Ituloy natin ang proyektong "' + proj.title + '".\n\n';
   if (proj.lastStop) msg += 'Saan ako huminto: ' + proj.lastStop + '\n\n';
@@ -1875,6 +2982,7 @@ function tryCompleteContinue(){
   msg += 'Tulungan mo akong ipagpatuloy ito.';
 
   switchToChat();
+  createNewConversation();
   input.value = msg;
   input.style.height = 'auto';
   input.style.height = Math.min(input.scrollHeight, 200) + 'px';
