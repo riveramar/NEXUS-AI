@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --bg-0:#0B0D12;
@@ -1208,6 +1209,18 @@
       <button class="settings-close-btn" id="settingsCloseBtn">&#10005;</button>
     </div>
 
+    <div class="settings-section-label">NEXUS Account (Supabase)</div>
+    <div class="drive-box" id="nexusAuthBox">
+      <div id="nexusSignedOut">
+        <button class="add-project-btn" id="nexusSignInBtn">Mag-sign in gamit Google</button>
+        <div class="apikey-hint" style="margin-top:10px;">Ito ang bagong pinagmumulan ng account sa NEXUS AI — magiging pundasyon ng cross-device na proyekto at usapan.</div>
+      </div>
+      <div id="nexusSignedIn" style="display:none;">
+        <div class="drive-status"><span class="dot"></span><span id="nexusUserLabel">Naka-sign in</span></div>
+        <button class="delete-project" id="nexusSignOutBtn">Mag-sign out</button>
+      </div>
+    </div>
+
     <div class="settings-section-label">AI Providers</div>
 
     <div class="apikey-box" id="apikeyBox">
@@ -1280,6 +1293,52 @@
 </div>
 
 <script>
+// ---- NEXUS Account (Supabase Auth) ----
+const SUPABASE_URL = 'https://uunkxxeorilgmlfehkxs.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_FmBf_4WBf-6M8fHMgKCLKw_7NQHgMWz';
+const nexusSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+const nexusSignedOut = document.getElementById('nexusSignedOut');
+const nexusSignedIn = document.getElementById('nexusSignedIn');
+const nexusUserLabel = document.getElementById('nexusUserLabel');
+const nexusSignInBtn = document.getElementById('nexusSignInBtn');
+const nexusSignOutBtn = document.getElementById('nexusSignOutBtn');
+let nexusUser = null;
+
+function refreshNexusAuthUI(){
+  if (nexusUser) {
+    nexusSignedOut.style.display = 'none';
+    nexusSignedIn.style.display = '';
+    nexusUserLabel.textContent = 'Naka-sign in bilang: ' + (nexusUser.email || 'user');
+  } else {
+    nexusSignedOut.style.display = '';
+    nexusSignedIn.style.display = 'none';
+  }
+}
+
+nexusSignInBtn.addEventListener('click', async () => {
+  await nexusSupabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href }
+  });
+});
+
+nexusSignOutBtn.addEventListener('click', async () => {
+  await nexusSupabase.auth.signOut();
+});
+
+nexusSupabase.auth.onAuthStateChange((event, session) => {
+  nexusUser = session ? session.user : null;
+  console.log('[NEXUS Auth]', event, nexusUser ? nexusUser.email : '(walang session)');
+  refreshNexusAuthUI();
+});
+
+// I-check agad kung may existing session na (hal. pagkatapos ng redirect mula Google)
+nexusSupabase.auth.getSession().then(({ data }) => {
+  nexusUser = data.session ? data.session.user : null;
+  refreshNexusAuthUI();
+});
+
 const messagesEl = document.getElementById('messages');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
@@ -1570,13 +1629,6 @@ exportChatBtn.addEventListener('click', () => {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 });
-
-conversations = loadConversations();
-if (conversations.length === 0) {
-  createNewConversation();
-} else {
-  switchConversation(conversations[0].id);
-}
 
 let groqKey = '';
 let claudeKey = '';
@@ -2076,6 +2128,15 @@ function switchToProjects(){
 }
 tabChatBtn.addEventListener('click', switchToChat);
 tabProjectsBtn.addEventListener('click', switchToProjects);
+
+// I-load ang mga naka-save na usapan ngayong na-define na ang switchToChat/switchToProjects.
+conversations = loadConversations();
+if (conversations.length === 0) {
+  createNewConversation();
+} else {
+  switchConversation(conversations[0].id);
+}
+
 
 // ---- Google Drive sync ----
 const driveSetup = document.getElementById('driveSetup');
