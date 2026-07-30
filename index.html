@@ -1141,6 +1141,7 @@
         <div class="dashboard" id="projectDashboard"></div>
 
         <div class="drive-status-line" id="driveStatusLine"></div>
+        <div class="drive-status-line" id="supabaseMigrateArea"></div>
 
         <div class="project-list" id="projectList"></div>
       </div>
@@ -1313,6 +1314,9 @@ function refreshNexusAuthUI(){
   } else {
     nexusSignedOut.style.display = '';
     nexusSignedIn.style.display = 'none';
+  }
+  if (typeof renderSupabaseMigrateArea === 'function' && document.getElementById('supabaseMigrateArea')) {
+    renderSupabaseMigrateArea();
   }
 }
 
@@ -2458,8 +2462,58 @@ function renderDashboard(){
   `;
 }
 
+// ---- One-time migration ng Projects papunta sa Supabase ----
+const supabaseMigrateArea = document.getElementById('supabaseMigrateArea');
+
+function renderSupabaseMigrateArea(){
+  if (!supabaseMigrateArea) return;
+  if (!nexusUser) {
+    supabaseMigrateArea.innerHTML = '&#9888; Mag-sign in sa Settings (NEXUS Account) para ma-migrate ang mga proyekto mo papunta sa Supabase.';
+    return;
+  }
+  const list = loadProjects();
+  if (list.length === 0) {
+    supabaseMigrateArea.innerHTML = '';
+    return;
+  }
+  supabaseMigrateArea.innerHTML = '';
+  const btn = document.createElement('button');
+  btn.className = 'new-project-btn';
+  btn.innerHTML = '\u2b06 I-migrate ang ' + list.length + ' na proyekto sa Supabase';
+  btn.addEventListener('click', migrateProjectsToSupabase);
+  supabaseMigrateArea.appendChild(btn);
+}
+
+async function migrateProjectsToSupabase(){
+  if (!nexusUser) return;
+  const list = loadProjects();
+  if (list.length === 0) return;
+  supabaseMigrateArea.textContent = 'Ina-migrate... paki-hintay.';
+  let successCount = 0;
+  let failCount = 0;
+  for (const p of list) {
+    const row = {
+      user_id: nexusUser.id,
+      title: p.title || 'Walang pangalan',
+      description: p.desc || null,
+      status: p.status || 'ongoing',
+      last_stop: p.lastStop || null,
+      next_steps: p.nextSteps || null,
+      tags: p.tags || null,
+      link: p.link || null,
+      code: p.code || null
+    };
+    const { error } = await nexusSupabase.from('projects').insert(row);
+    if (error) { failCount++; console.error('Migrate error', error); }
+    else successCount++;
+  }
+  supabaseMigrateArea.innerHTML = '&#10003; Na-migrate: ' + successCount + ' &middot; Nabigo: ' + failCount +
+    ' &mdash; tingnan sa Supabase Table Editor para kumpirmahin.';
+}
+
 function renderProjects(){
   renderDashboard();
+  renderSupabaseMigrateArea();
   const list = loadProjects();
   projectList.innerHTML = '';
   if (list.length === 0) {
