@@ -2471,7 +2471,7 @@ function renderSupabaseMigrateArea(){
     supabaseMigrateArea.innerHTML = '&#9888; Mag-sign in sa Settings (NEXUS Account) para ma-migrate ang mga proyekto mo papunta sa Supabase.';
     return;
   }
-  const list = loadProjects();
+  const list = loadProjects().filter(p => !p.supabaseId);
   if (list.length === 0) {
     supabaseMigrateArea.innerHTML = '';
     return;
@@ -2487,11 +2487,12 @@ function renderSupabaseMigrateArea(){
 async function migrateProjectsToSupabase(){
   if (!nexusUser) return;
   const list = loadProjects();
-  if (list.length === 0) return;
+  const toMigrate = list.filter(p => !p.supabaseId);
+  if (toMigrate.length === 0) { supabaseMigrateArea.innerHTML = 'Wala nang bagong proyektong dapat i-migrate.'; return; }
   supabaseMigrateArea.textContent = 'Ina-migrate... paki-hintay.';
   let successCount = 0;
   let failCount = 0;
-  for (const p of list) {
+  for (const p of toMigrate) {
     const row = {
       user_id: nexusUser.id,
       title: p.title || 'Walang pangalan',
@@ -2503,9 +2504,14 @@ async function migrateProjectsToSupabase(){
       link: p.link || null,
       code: p.code || null
     };
-    const { error } = await nexusSupabase.from('projects').insert(row);
+    const { data, error } = await nexusSupabase.from('projects').insert(row).select().single();
     if (error) { failCount++; console.error('Migrate error', error); }
-    else successCount++;
+    else {
+      successCount++;
+      const freshList = loadProjects();
+      const idx = freshList.findIndex(item => String(item.id) === String(p.id));
+      if (idx !== -1) { freshList[idx].supabaseId = data.id; saveProjects(freshList); }
+    }
   }
   supabaseMigrateArea.innerHTML = '&#10003; Na-migrate: ' + successCount + ' &middot; Nabigo: ' + failCount +
     ' &mdash; tingnan sa Supabase Table Editor para kumpirmahin.';
@@ -2561,10 +2567,13 @@ function renderProjects(){
   projectList.querySelectorAll('.delete-project').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-id');
-      const updated = loadProjects().filter(p => String(p.id) !== id);
+      const list = loadProjects();
+      const toDelete = list.find(p => String(p.id) === id);
+      const updated = list.filter(p => String(p.id) !== id);
       saveProjects(updated);
       if (editingId && String(editingId) === id) resetProjectForm();
       renderProjects();
+      if (toDelete) deleteProjectFromSupabase(toDelete);
     });
   });
 
@@ -2620,10 +2629,50 @@ cancelEditBtn.addEventListener('click', () => {
   closeProjectFormModal();
 });
 
-addProjectBtn.addEventListener('click', () => {
+// ---- Supabase sync ng bawat project (create/update/delete) ----
+async function syncProjectToSupabase(p){
+  if (!nexusUser || !p) return;
+  const row = {
+    user_id: nexusUser.id,
+    title: p.title || 'Walang pangalan',
+    description: p.desc || null,
+    status: p.status || 'ongoing',
+    last_stop: p.lastStop || null,
+    next_steps: p.nextSteps || null,
+    tags: p.tags || null,
+    link: p.link || null,
+    code: p.code || null
+  };
+  try {
+    if (p.supabaseId) {
+      const { error } = await nexusSupabase.from('projects').update(row).eq('id', p.supabaseId);
+      if (error) console.error('Supabase update error', error);
+    } else {
+      const { data, error } = await nexusSupabase.from('projects').insert(row).select().single();
+      if (error) { console.error('Supabase insert error', error); return; }
+      const list = loadProjects();
+      const idx = list.findIndex(item => String(item.id) === String(p.id));
+      if (idx !== -1) {
+        list[idx].supabaseId = data.id;
+        saveProjects(list);
+      }
+    }
+  } catch (e) { console.error('Supabase sync error', e); }
+}
+
+async function deleteProjectFromSupabase(p){
+  if (!nexusUser || !p || !p.supabaseId) return;
+  try {
+    const { error } = await nexusSupabase.from('projects').delete().eq('id', p.supabaseId);
+    if (error) console.error('Supabase delete error', error);
+  } catch (e) { console.error('Supabase delete error', e); }
+}
+
+addProjectBtn.addEventListener('click', async () => {
   const title = projTitle.value.trim();
   if (!title) { projTitle.focus(); return; }
   const list = loadProjects();
+  let projectData;
 
   if (editingId) {
     const idx = list.findIndex(p => String(p.id) === String(editingId));
@@ -2641,9 +2690,10 @@ addProjectBtn.addEventListener('click', () => {
         attachments: currentAttachments.slice(),
         updatedAt: Date.now()
       };
+      projectData = list[idx];
     }
   } else {
-    list.push({
+    projectData = {
       id: Date.now(),
       title,
       desc: projDesc.value.trim(),
@@ -2655,13 +2705,18 @@ addProjectBtn.addEventListener('click', () => {
       nextSteps: projNextSteps.value.trim(),
       attachments: currentAttachments.slice(),
       createdAt: Date.now()
-    });
+    };
+    list.push(projectData);
   }
 
   saveProjects(list);
   resetProjectForm();
   renderProjects();
   closeProjectFormModal();
+
+  if (nexusUser && projectData) {
+    syncProjectToSupabase(projectData);
+  }
 });
 
 refreshDriveUI();
