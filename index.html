@@ -1529,6 +1529,41 @@ function saveConversations(){
 function getCurrentConversation(){
   return conversations.find(c => c.id === currentConversationId);
 }
+
+// ---- Supabase sync ng conversations/messages ----
+async function syncNewConversationToSupabase(conv){
+  if (!nexusUser) return;
+  try {
+    const { data, error } = await nexusSupabase.from('conversations')
+      .insert({ user_id: nexusUser.id, title: conv.title || null }).select().single();
+    if (error) { console.error('Supabase conversation insert error', error); return; }
+    conv.supabaseId = data.id;
+    saveConversations();
+  } catch (e) { console.error('Supabase conversation sync error', e); }
+}
+
+async function syncMessageToSupabase(conv, role, text, label){
+  if (!nexusUser || !conv.supabaseId) return;
+  try {
+    const { error } = await nexusSupabase.from('messages').insert({
+      conversation_id: conv.supabaseId, role, content: text, provider_label: label || null
+    });
+    if (error) console.error('Supabase message insert error', error);
+    if (conv.title) {
+      nexusSupabase.from('conversations').update({ title: conv.title, last_active_at: new Date().toISOString() })
+        .eq('id', conv.supabaseId).then(({ error: e2 }) => { if (e2) console.error('Conversation title update error', e2); });
+    }
+  } catch (e) { console.error('Supabase message sync error', e); }
+}
+
+async function deleteConversationFromSupabase(conv){
+  if (!nexusUser || !conv || !conv.supabaseId) return;
+  try {
+    const { error } = await nexusSupabase.from('conversations').delete().eq('id', conv.supabaseId);
+    if (error) console.error('Supabase conversation delete error', error);
+  } catch (e) { console.error('Supabase conversation delete error', e); }
+}
+
 function logMessageToConversation(role, text, label){
   const conv = getCurrentConversation();
   if (!conv) return;
@@ -1538,6 +1573,7 @@ function logMessageToConversation(role, text, label){
   }
   saveConversations();
   renderConversationList();
+  if (nexusUser) syncMessageToSupabase(conv, role, text, label);
 }
 function createNewConversation(){
   const conv = {
@@ -1557,6 +1593,7 @@ function createNewConversation(){
   claudeHistory = conv.claudeHistory;
   messagesEl.innerHTML = '';
   renderConversationList();
+  if (nexusUser) syncNewConversationToSupabase(conv);
 }
 function switchConversation(id){
   const conv = conversations.find(c => c.id === id);
@@ -1571,6 +1608,7 @@ function switchConversation(id){
   switchToChat();
 }
 function deleteConversation(id){
+  const toDelete = conversations.find(c => c.id === id);
   conversations = conversations.filter(c => c.id !== id);
   saveConversations();
   if (currentConversationId === id) {
@@ -1582,6 +1620,7 @@ function deleteConversation(id){
   } else {
     renderConversationList();
   }
+  if (toDelete) deleteConversationFromSupabase(toDelete);
 }
 function renderConversationList(){
   conversationList.innerHTML = '';
@@ -2631,7 +2670,7 @@ cancelEditBtn.addEventListener('click', () => {
 
 // ---- Supabase sync ng bawat project (create/update/delete) ----
 async function syncProjectToSupabase(p){
-  if (!nexusUser || !p) return;
+  if (!nexusUser || !p) return null;
   const row = {
     user_id: nexusUser.id,
     title: p.title || 'Walang pangalan',
@@ -2646,18 +2685,47 @@ async function syncProjectToSupabase(p){
   try {
     if (p.supabaseId) {
       const { error } = await nexusSupabase.from('projects').update(row).eq('id', p.supabaseId);
-      if (error) console.error('Supabase update error', error);
+      if (error) { console.error('Supabase update error', error); return null; }
+      return p.supabaseId;
     } else {
       const { data, error } = await nexusSupabase.from('projects').insert(row).select().single();
-      if (error) { console.error('Supabase insert error', error); return; }
+      if (error) { console.error('Supabase insert error', error); return null; }
       const list = loadProjects();
       const idx = list.findIndex(item => String(item.id) === String(p.id));
       if (idx !== -1) {
         list[idx].supabaseId = data.id;
         saveProjects(list);
       }
+      return data.id;
     }
-  } catch (e) { console.error('Supabase sync error', e); }
+  } catch (e) { console.error('Supabase sync error', e); return null; }
+}
+
+// ---- Pag-upload ng attachments papunta sa Supabase Storage ----
+async function uploadAttachmentsToSupabase(p, supabaseProjectId){
+  if (!supabaseProjectId || !p.attachments || !p.attachments.length) return;
+  let changed = false;
+  for (const att of p.attachments) {
+    if (att.storagePath) continue; // na-upload na dati, i-skip
+    try {
+      const res = await fetch(att.dataUrl);
+      const blob = await res.blob();
+      const path = nexusUser.id + '/' + supabaseProjectId + '/' + att.id + '-' + att.name;
+      const { error: upErr } = await nexusSupabase.storage.from('project-files').upload(path, blob, { upsert: true });
+      if (upErr) { console.error('Storage upload error', upErr); continue; }
+      const { error: dbErr } = await nexusSupabase.from('project_files').insert({
+        project_id: supabaseProjectId, file_name: att.name, storage_path: path, mime_type: att.type
+      });
+      if (dbErr) console.error('project_files insert error', dbErr);
+      att.storagePath = path;
+      changed = true;
+    } catch (e) { console.error('Upload error', e); }
+  }
+  if (changed) {
+    const list = loadProjects();
+    const idx = list.findIndex(item => String(item.id) === String(p.id));
+    if (idx !== -1) { list[idx].attachments = p.attachments; saveProjects(list); }
+  }
 }
 
 async function deleteProjectFromSupabase(p){
@@ -2715,7 +2783,8 @@ addProjectBtn.addEventListener('click', async () => {
   closeProjectFormModal();
 
   if (nexusUser && projectData) {
-    syncProjectToSupabase(projectData);
+    const supabaseId = await syncProjectToSupabase(projectData);
+    if (supabaseId) uploadAttachmentsToSupabase(projectData, supabaseId);
   }
 });
 
